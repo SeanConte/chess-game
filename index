@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chess Placement Duel — Stone/Ivory/Onyx (Canvas + AI)</title>
+  <style>
+    *{box-sizing:border-box}
+    :root{
+      /* Stony slate aesthetic */
+      --bg1: radial-gradient(65% 45% at 25% 25%, rgba(255,255,255,.10), transparent 60%),
+             radial-gradient(65% 45% at 75% 80%, rgba(0,0,0,.25), transparent 60%);
+      --base: #888;
+      --panelTintLight: rgba(255,255,255,.18);
+      --panelTintDark:  rgba(0,0,0,.22);
+      --text: #111;
+      --ring: #b64040;
+      --noiseOpacity: .035;
+      /* Unified board squares — single slate color */
+      --sq-color: #a8b4c0;
+      /* Piece fills (opaque) */
+      --ivory: #f2ebda; /* white side */
+      --onyx:  #262d38; /* black side */
+      --accent: #c9d7ff; --radius: 20px;
+    }
+    body{margin:0;min-height:100vh;display:grid;place-items:center;color:var(--text);background:var(--bg1),var(--base);background-blend-mode:overlay,normal;font:16px system-ui, -apple-system, Segoe UI}
+    body::after{content:"";position:fixed;inset:0;pointer-events:none;background-image:repeating-linear-gradient(0deg,rgba(0,0,0,.6) 0 1px,transparent 1px 2px),repeating-linear-gradient(90deg,rgba(0,0,0,.6) 0 1px,transparent 1px 2px);mix-blend-mode:overlay;opacity:var(--noiseOpacity)}
+
+    .app{width:min(1220px,96vw);display:grid;grid-template-columns:300px 1fr 320px;gap:16px;padding:20px; align-items: stretch;}
+    .stone{background:linear-gradient(135deg,var(--panelTintLight),var(--panelTintDark));border:1px solid rgba(255,255,255,.35);outline:1px solid rgba(0,0,0,.28);border-radius:var(--radius)}
+    .panel{padding:14px}
+    .title{font-weight:800;font-size:18px;margin:0 0 8px}
+    .sub{opacity:.85;font-size:12px;margin:0 0 8px}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .ctrls{display:grid;gap:8px;margin-top:8px}
+    select{background:transparent;color:inherit;border:1px solid rgba(0,0,0,.32);border-radius:10px;padding:6px 10px}
+    .clock{font-variant-numeric:tabular-nums;font-weight:700;padding:4px 8px;border-radius:10px;background:rgba(255,255,255,.10);border:1px solid rgba(0,0,0,.25)}
+
+    /* utility */
+    .hidden{display:none !important}
+    /* Hide in-game control block; settings now live in Setup */
+    .ctrls{display:none !important}
+
+    /* SIDE PANELS become flex columns so bank fills remaining height */
+    #panelWhite, #panelBlack { display: flex; flex-direction: column; min-height: 100%; }
+    #panelWhite .row, #panelBlack .row { margin-bottom: 8px; }
+
+    /* BANK: true 2x3 grid that sizes with its panel */
+    .bank{ display:grid; grid-template-columns:repeat(2,1fr); grid-template-rows:repeat(3,1fr); gap:10px; height:100%; container-type: size; }
+    .bank .piece{ width:100%; height:100%; aspect-ratio:auto; display:grid; place-items:center; border-radius:14px; cursor:pointer; position:relative; border:1px solid rgba(255,255,255,.30); outline:1px solid rgba(0,0,0,.30); background:rgba(255,255,255,.05) }
+    .piece.disabled{opacity:.35;cursor:not-allowed}
+    .piece.selected{outline:2px solid var(--accent)}
+    .count{position:absolute;right:6px;bottom:6px;font-size:clamp(10px,5cqi,13px);padding:2px 6px;border-radius:10px;background:rgba(0,0,0,.25);color:#e6eef5}
+    .glyph{font-size:clamp(22px,12cqi,48px);line-height:1;display:block}
+    /* Use BLACK chess glyphs for both sides so details are negative space; tint by color */
+    .gIvory{color:var(--ivory);text-shadow:0 0 10px rgba(255,255,255,.35)}
+    .gOnyx{color:var(--onyx); text-shadow:0 0 8px rgba(0,0,0,.25)}
+
+    .board{width:min(78vh,620px);height:min(78vh,620px);display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border-radius:var(--radius);overflow:hidden;border:2px solid rgba(255,255,255,.5);outline:2px solid rgba(0,0,0,.4);position:relative;background:linear-gradient(45deg, rgba(0,0,0,.06), rgba(255,255,255,.06))}
+    .sq{display:grid;place-items:center;cursor:pointer;position:relative;background:var(--sq-color);border:2px solid rgba(0,0,0,.15)}
+
+    .marker{position:absolute;inset:6%;border-radius:12px;pointer-events:none;opacity:.95}
+    .marker.preview{background:rgba(167,139,250,.45);box-shadow:inset 0 0 0 2px rgba(255,255,255,.45)}
+    .marker.heat{opacity:.95;mix-blend-mode:multiply;box-shadow:inset 0 0 0 2px rgba(0,0,0,.18)}
+
+    .ring{position:absolute;inset:8%;border-radius:50%;box-shadow:inset 0 0 0 3px var(--ring);pointer-events:none}
+    .arrow{position:absolute;left:50%;top:-20%;width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:16px solid var(--ring);transform:translateX(-50%);animation:drop 650ms ease-out forwards;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+    @keyframes drop{0%{transform:translate(-50%,-60px);opacity:0}70%{transform:translate(-50%,0);opacity:1}100%{transform:translate(-50%,0);opacity:0}}
+
+    /* Shatter effect */
+    .shatter{position:absolute; pointer-events:none; left:0; top:0}
+    .shard{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); opacity:1}
+    @keyframes shatter{ to{ transform:translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.85); opacity:0; } }
+
+    .status{font-size:14px;opacity:.9;margin-top:8px}
+    .winner{display:none;color:#111;background:rgba(182,64,64,.25);padding:10px 12px;border-radius:10px;border:1px solid rgba(0,0,0,.3);margin-top:6px}
+
+    /* Log + controls under the board */
+    .center-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+    .center-actions button{padding:8px 10px;border-radius:10px;border:1px solid rgba(0,0,0,.25);background:rgba(255,255,255,.08);cursor:pointer}
+
+    /* fixed-height, scrollable log (~8 lines) */
+    .log{height:216px;overflow:auto;padding-right:6px;margin-top:8px}
+    .log ul{list-style:none;padding-left:0;margin:0}
+    .log li{padding:6px 8px;border-radius:10px;background:rgba(0,0,0,.06);margin-bottom:6px;font-size:13px;border:1px solid rgba(0,0,0,.15)}
+    .log::-webkit-scrollbar{ width:8px }
+    .log::-webkit-scrollbar-thumb{ background:rgba(0,0,0,.25); border-radius:8px }
+
+    /* Blue highlight for a board piece selected to move */
+    .sq.selected-board::after{
+      content:"";
+      position:absolute;
+      inset:6%;
+      border-radius:12px;
+      box-shadow:inset 0 0 0 2px var(--accent);
+      background: rgba(201,215,255,0.18);
+      pointer-events:none;
+    }
+
+    /* Error overlay */
+    #err{position:fixed;inset:auto 12px 12px auto;max-width:min(70ch,90vw);background:#300;color:#fff;border:1px solid #944;padding:10px 12px;border-radius:8px;display:none;white-space:pre-wrap;font:12px ui-monospace, SFMono-Regular}
+
+    /* Setup AI controls */
+    .aiRow{display:flex;gap:10px;align-items:center}
+    .aiRow > *{flex:0 0 auto}
+  </style>
+</head>
+<body>
+  <!-- Intro: now contains the full game description/objective -->
+  <section id="about" class="panel stone" style="width:min(900px,96vw);margin:18px auto 4px;padding:16px 18px;">
+    <h2 class="title">The Game</h2>
+    <div class="sub" id="topIntro" style="line-height:1.5">
+      <p>
+        <strong>This chess variant involves outnumbering positions.</strong> There is no attacking — pieces are captured when their position is outnumbered.
+        Players start with banks of pieces which they place on the board to gain territorial advantage. The game features the following modes &amp; options:
+      </p>
+      <ul style="margin:8px 0 0 18px">
+        <li><strong>Game Mode:</strong>
+          <ul style="margin:6px 0 0 16px">
+            <li><strong>Sudden Death:</strong> If any of a player's pieces are outnumbered at the end of their turn, they lose the game.</li>
+            <li><strong>Queens Gambit:</strong> Pieces left outnumbered at the end of a player's turn are removed, but the game ends only when their last queen (board + bank) is gone.</li>
+            <li><strong>Total War:</strong> Pieces left outnumbered are removed. A player loses only when they have zero total pieces (board + bank).</li>
+          </ul>
+        </li>
+        <li><strong>Movement:</strong>
+          <ul style="margin:6px 0 0 16px">
+            <li><strong>None:</strong> Once a piece is placed, it never moves. (If the game doesn't end before both banks are empty, the player with the most pieces remaining on the board wins.)</li>
+            <li><strong>Line of sight:</strong> Instead of placing a new piece, players can move a piece already on the board according to where it can see (attack, under normal rules of chess) excluding spots that are already outnumbered or occupied.</li>
+            <li><strong>Anywhere:</strong> Instead of placing a new piece, players can teleport one of their already placed pieces to any spot not already occupied or outnumbered.</li>
+          </ul>
+        </li>
+        <li><strong>Starting Armies:</strong> Choose piece banks to start with.</li>
+        <li><strong>AI:</strong> Enable an AI to play as Black. The depth indicates how many moves ahead it will consider. The style indicates what board considerations it favors.</li>
+        <li><strong>Timed games:</strong> classic chess rules — players must each keep total playing time below some limit (60 seconds, 5 minutes, unlimited)</li>
+        <li><strong>Pause between turns:</strong> briefly pause after each move — useful for sharing the same device during timed games</li>
+        <li><strong>Heatmap:</strong> tint squares by control (your control vs opponent) with intensity based on overlapping coverage.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Setup screen -->
+  <section id="setup" class="panel stone" style="width:min(900px,96vw);margin:6px auto 16px;padding:16px 18px;">
+    <h2 class="title">Setup</h2>
+    <p class="sub" id="intro" style="line-height:1.45">Choose your settings, then start the match.</p>
+    <div class="ctrls" style="display:grid !important; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;">
+      <label>Time control
+        <select id="timeControlSetup">
+          <option value="0" selected>Unlimited</option>
+          <option value="60">60 seconds</option>
+          <option value="300">5 minutes</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="pauseSetup"> Pause between turns</label>
+      <label><input type="checkbox" id="heatmapSetup" checked> Show heatmap</label>
+      <label>Game Mode
+        <select id="gameModeSetup">
+          <option value="sudden">Sudden Death</option>
+          <option value="queens">Queens Gambit</option>
+          <option value="total" selected>Total War</option>
+        </select>
+      </label>
+      <label>Movement
+        <select id="movementSetup">
+          <option value="none" selected>No movement</option>
+          <option value="lineOfSight">Line of sight</option>
+          <option value="anywhere">Anywhere</option>
+        </select>
+      </label>
+      <label>Starting Armies
+        <select id="armySetup">
+          <option value="basic" selected>Basic (K,Q,R,B,N,P)</option>
+          <option value="queens">8 Queens (4 each)</option>
+          <option value="classic">Full Chess Set</option>
+        </select>
+      </label>
+      <div class="aiRow">
+        <label><input type="checkbox" id="aiEnable"> Play vs AI (Black)</label>
+        <label>AI Depth
+          <select id="aiDepth">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3" selected>3</option>
+            <option value="4">4</option>
+          </select>
+        </label>
+        <label>AI Style
+          <select id="aiStyle">
+            <option value="balanced" selected>Balanced</option>
+            <option value="aggressive">Aggressive</option>
+            <option value="defensive">Defensive</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <!-- Hide the old options explanation to avoid duplication -->
+    <div id="setupHelp" class="sub" style="display:none"></div>
+    <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+      <button id="btnStart">Start Game</button>
+    </div>
+  </section>
+
+  <div id="gameWrap" class="app hidden">
+    <!-- Left: White bank (fills full panel) -->
+    <section class="panel stone" id="panelWhite">
+      <div class="row"><div><h2 class="title">White Bank</h2><div class="sub">Click to select a piece to place.</div></div><span class="clock" id="clockWhite">∞</span></div>
+      <div class="bank" id="bankWhite"></div>
+    </section>
+
+    <!-- Center: Board + buttons + log -->
+    <section class="panel stone" style="display:grid; grid-template-rows:auto auto auto 1fr; place-items:center;">
+      <div class="board" id="board" aria-label="board"></div>
+      <div class="status" id="status">White to move.</div>
+      <div class="winner" id="winner"></div>
+      <div class="center-actions">
+        <button id="btnUndo">↶ Undo</button>
+        <button id="btnRestart">⟲ Restart</button>
+        <button id="btnExit">⟵ Exit to Setup</button>
+      </div>
+      <div class="log" style="width:100%"><ul id="logList"></ul></div>
+    </section>
+
+    <!-- Right: Black bank (fills full panel) -->
+    <section class="panel stone" id="panelBlack">
+      <div class="row"><div><h2 class="title">Black Bank</h2><div class="sub">Opponent's remaining pieces.</div></div><span class="clock" id="clockBlack">∞</span></div>
+      <div class="bank" id="bankBlack"></div>
+    </section>
+  </div>
+  <pre id="err"></pre>
+
+  <script>
+  // ---- Minimal error reporter to surface issues if rendering stalls ----
+  const errBox = document.getElementById('err');
+  window.addEventListener('error', (ev)=>{
+    errBox.style.display='block';
+    errBox.textContent = 'JS Error: '+ (ev.message||'unknown') + '\n' + (ev.filename||'') + ':' + (ev.lineno||'');
+  });
+  window.addEventListener('unhandledrejection', (ev)=>{
+    errBox.style.display='block';
+    errBox.textContent = 'Unhandled promise rejection: '+ (ev.reason && ev.reason.message ? ev.reason.message : ev.reason);
+  });
+
+  // --- Audio (guarded; will no-op if blocked) ---
+  let audioCtx = null;
+  function getCtx(){
+    if(audioCtx) return audioCtx;
+    try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
+    catch(e){ audioCtx = null; }
+    return audioCtx;
+  }
+  // Arm audio context once on user gesture
+  function armAudioOnce(){
+    const ctx = getCtx();
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(()=>{});
+    window.removeEventListener('pointerdown', armAudioOnce);
+    window.removeEventListener('keydown', armAudioOnce);
+  }
+  window.addEventListener('pointerdown', armAudioOnce, { once:true });
+  window.addEventListener('keydown', armAudioOnce, { once:true });
+
+  function env(g, a=0.005, d=0.15){ const ctx=getCtx(); if(!ctx||!g||!g.gain) return; const now=ctx.currentTime; g.gain.cancelScheduledValues(now); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(1, now+a); g.gain.exponentialRampToValueAtTime(0.0001, now+a+d); }
+  function mkNoise(len=4410){ const ctx=getCtx(); if(!ctx) return null; const b=ctx.createBuffer(1,len,44100); const d=b.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1); const s=ctx.createBufferSource(); s.buffer=b; return {source:s, ctx}; }
+  function woodClick(){
+    const ctx=getCtx(); if(!ctx) return;
+    const pack=mkNoise(6000); if(!pack) return;
+    const n=pack.source;
+    const lp=pack.ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=450; lp.Q.value=0.7;
+    const gN=pack.ctx.createGain(); env(gN,0.002,0.09); gN.gain.value=0.9;
+
+    const o=pack.ctx.createOscillator(); o.type='sine';
+    o.frequency.setValueAtTime(110, pack.ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(85, pack.ctx.currentTime+0.08);
+    const gO=pack.ctx.createGain(); env(gO,0.0015,0.12); gO.gain.value=0.7;
+
+    n.connect(lp); lp.connect(gN); gN.connect(pack.ctx.destination);
+    o.connect(gO); gO.connect(pack.ctx.destination);
+    n.start(); o.start();
+    n.stop(pack.ctx.currentTime+0.12); o.stop(pack.ctx.currentTime+0.13);
+  }
+  function softThud(){ const ctx=getCtx(); if(!ctx) return; const o=ctx.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(140,ctx.currentTime); o.frequency.exponentialRampToValueAtTime(70,ctx.currentTime+0.15); const g=ctx.createGain(); env(g,0.002,0.18); o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.2); }
+  function parchment(){ const ctx=getCtx(); if(!ctx) return; const pack=mkNoise(8000); if(!pack) return; const n=pack.source; const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1200; const g=ctx.createGain(); env(g,0.002,0.25); n.connect(hp); hp.connect(g); g.connect(ctx.destination); n.start(); n.stop(ctx.currentTime+0.25); }
+  function bell(){ const ctx=getCtx(); if(!ctx) return; const o=ctx.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(740,ctx.currentTime); const g=ctx.createGain(); env(g,0.004,0.7); o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.7); }
+  function errorMuffle(){ const ctx=getCtx(); if(!ctx) return; const o=ctx.createOscillator(); o.type='triangle'; o.frequency.value=160; const g=ctx.createGain(); env(g,0.002,0.18); const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=420; o.connect(lp); lp.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.2); }
+
+  // Extra audio cues
+  function defendPing(){
+    const ctx=getCtx(); if(!ctx) return;
+    const o1=ctx.createOscillator(); const o2=ctx.createOscillator();
+    o1.type='triangle'; o2.type='sine';
+    o1.frequency.setValueAtTime(420, ctx.currentTime);
+    o1.frequency.exponentialRampToValueAtTime(560, ctx.currentTime+0.16);
+    o2.frequency.setValueAtTime(560, ctx.currentTime);
+    o2.frequency.exponentialRampToValueAtTime(700, ctx.currentTime+0.16);
+    const g=ctx.createGain(); env(g,0.002,0.18);
+    o1.connect(g); o2.connect(g); g.connect(ctx.destination);
+    o1.start(); o2.start();
+    o1.stop(ctx.currentTime+0.2); o2.stop(ctx.currentTime+0.2);
+  }
+  function breakCrunch(){
+    const ctx=getCtx(); if(!ctx) return;
+    // crack
+    const p=mkNoise(4000); if(p){
+      const n=p.source; const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1500; hp.Q=0.7;
+      const g=ctx.createGain(); env(g,0.001,0.12); g.gain.value=0.8;
+      n.connect(hp); hp.connect(g); g.connect(ctx.destination);
+      n.start(); n.stop(ctx.currentTime+0.08);
+    }
+    // thud
+    const o=ctx.createOscillator(); o.type='sine';
+    o.frequency.setValueAtTime(120,ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(70,ctx.currentTime+0.22);
+    const g2=ctx.createGain(); env(g2,0.002,0.22); g2.gain.value=0.9;
+    o.connect(g2); g2.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime+0.24);
+  }
+
+  // --- Constants and helpers ---
+  const SIZE=8, WHITE='w', BLACK='b';
+  const mapBlack = {K:'\u265A', Q:'\u265B', R:'\u265C', B:'\u265D', N:'\u265E', P:'\u265F'}; // black glyphs for both
+  const clone = obj => JSON.parse(JSON.stringify(obj));
+  const inBounds = (r,c)=> r>=0 && r<SIZE && c>=0 && c<SIZE;
+
+  // --- Banks presets ---
+  const bankBasic   = ()=>({K:1,Q:1,R:1,B:1,N:1,P:3});
+  const bankQueens  = ()=>({K:0,Q:4,R:0,B:0,N:0,P:0});
+  const bankClassic = ()=>({K:1,Q:1,R:2,B:2,N:2,P:8});
+
+  // --- State ---
+  function makeFreshState(preset){
+    const bank = preset==='basic'? bankBasic() : preset==='queens'? bankQueens() : bankClassic();
+    return {
+      board: Array.from({length:SIZE},()=>Array(SIZE).fill(null)),
+      turn: WHITE,
+      bank: {[WHITE]: clone(bank), [BLACK]: clone(bank)},
+      selected: null, // {type,color, from?}
+      history: [], log: [],
+      heatmap: true,
+      gameMode: 'sudden', // 'sudden' | 'queens' | 'total'
+      movementMode: 'none', // 'none' | 'lineOfSight' | 'anywhere'
+      pauseBetween: false,
+      baseTime: 0,
+      timeLeft: {[WHITE]:0,[BLACK]:0},
+      lastTick: 0, tickTimer: null,
+      obligations: [],          // start-of-turn threatened pieces
+      justStartedTurn: true,
+      winner: null, draw:false,
+      effectsShatter: [],
+      preset,
+      config: null,
+      ai: {enabled:false, depth:3, style:'balanced', thinking:false, timerId:null}
+    };
+  }
+  let state = makeFreshState('basic');
+
+  // --- DOM refs ---
+  const boardEl=document.getElementById('board');
+  const bankWhiteEl=document.getElementById('bankWhite');
+  const bankBlackEl=document.getElementById('bankBlack');
+  const statusEl=document.getElementById('status');
+  const winnerEl=document.getElementById('winner');
+  const logList=document.getElementById('logList');
+  const btnUndo=document.getElementById('btnUndo');
+  const btnRestart=document.getElementById('btnRestart');
+  const btnExit=document.getElementById('btnExit');
+
+  // Setup refs
+  const setupEl = document.getElementById('setup');
+  const gameWrap = document.getElementById('gameWrap');
+  const btnStart = document.getElementById('btnStart');
+  const timeControlSetup = document.getElementById('timeControlSetup');
+  const pauseSetup = document.getElementById('pauseSetup');
+  const heatmapSetup = document.getElementById('heatmapSetup');
+  const gameModeSetup = document.getElementById('gameModeSetup');
+  const movementSetup = document.getElementById('movementSetup');
+  const armySetup = document.getElementById('armySetup');
+  const aiEnable = document.getElementById('aiEnable');
+  const aiDepth = document.getElementById('aiDepth');
+  const aiStyle = document.getElementById('aiStyle');
+
+  let gameLocked = false; // after Start, settings are locked
+  let lastConfig = null;
+
+  // --- Shared threat/attack utilities parameterized by a given state ---
+  function squaresAttackedByOn(s,color){
+    const attacked=new Map();
+    const add=(rr,cc)=>{const k=rr+','+cc; attacked.set(k,(attacked.get(k)||0)+1)};
+    for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
+      const p=s.board[r][c]; if(!p||p.color!==color) continue;
+      switch(p.type){
+        case 'P':{ const dir=color===WHITE?-1:1; [[r+dir,c-1],[r+dir,c+1]].forEach(([rr,cc])=>{ if(inBounds(rr,cc)) add(rr,cc)}); break; }
+        case 'N':{ [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]].forEach(([dr,dc])=>{const rr=r+dr,cc=c+dc; if(inBounds(rr,cc)) add(rr,cc)}); break; }
+        case 'K':{ for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) if(dr||dc){const rr=r+dr,cc=c+dc; if(inBounds(rr,cc)) add(rr,cc)} break; }
+        case 'B': case 'R': case 'Q':{ const dirs=rayDirsFor(p.type); for(const [dr,dc] of dirs){ let rr=r+dr,cc=c+dc; while(inBounds(rr,cc)){ add(rr,cc); if(s.board[rr][cc]!==null) break; rr+=dr; cc+=dc; } } break; }
+      }
+    }
+    return attacked;
+  }
+  const isEmptyOn=(s,r,c)=> s.board[r][c]===null;
+  function rayDirsFor(t){ if(t==='B') return [[1,1],[1,-1],[-1,1],[-1,-1]]; if(t==='R') return [[1,0],[-1,0],[0,1],[0,-1]]; if(t==='Q') return [[1,1],[1,-1],[-1,1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]]; return []; }
+
+  function legalPlacementsOn(s,color){
+    const enemy=color===WHITE?BLACK:WHITE;
+    const friendMap=squaresAttackedByOn(s,color);
+    const enemyMap=squaresAttackedByOn(s,enemy);
+    const union=new Set();
+    for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
+      if(!isEmptyOn(s,r,c)) continue; const k=r+','+c; const f=friendMap.get(k)||0, e=enemyMap.get(k)||0; if(e>f) continue; union.add(k);
+    }
+    return {union, friendMap, enemyMap};
+  }
+
+  function threatenedPiecesOfOn(s,color){
+    const enemy=color===WHITE?BLACK:WHITE; const friendMap=squaresAttackedByOn(s,color); const enemyMap=squaresAttackedByOn(s,enemy); const out=[];
+    for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
+      const p=s.board[r][c]; if(!p||p.color!==color) continue; const k=r+','+c; const f=friendMap.get(k)||0, e=enemyMap.get(k)||0; if(e>f) out.push([r,c]);
+    }
+    return out;
+  }
+
+  function hypotheticalAttacks(r,c,t,color, s=null){
+    const set=new Set(); const add=(rr,cc)=> set.add(rr+','+cc);
+    switch(t){
+      case 'P':{ const dir=color===WHITE?-1:1; [[r+dir,c-1],[r+dir,c+1]].forEach(([rr,cc])=>{ if(inBounds(rr,cc)) add(rr,cc)}); break; }
+      case 'N':{ [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]].forEach(([dr,dc])=>{const rr=r+dr,cc=c+dc; if(inBounds(rr,cc)) add(rr,cc)}); break; }
+      case 'K':{ for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) if(dr||dc){const rr=r+dr,cc=c+dc; if(inBounds(rr,cc)) add(rr,cc)} break; }
+      case 'B': case 'R': case 'Q':{ const dirs=rayDirsFor(t); for(const [dr,dc] of dirs){ let rr=r+dr,cc=c+dc; while(inBounds(rr,cc)){ add(rr,cc); if(s && !isEmptyOn(s,rr,cc)) break; rr+=dr; cc+=dc; } } break; }
+    }
+    return set;
+  }
+
+  // --- Movement helpers ---
+  const isEmpty=(r,c)=> state.board[r][c]===null;
+  const placePiece=(r,c,t,color)=> state.board[r][c]={type:t,color};
+
+  function losEmptyMovesFromOn(s,r,c,t,color){
+    const moves=new Set();
+    function add(rr,cc){ if(inBounds(rr,cc) && isEmptyOn(s,rr,cc)) moves.add(rr+","+cc); }
+    if(t==='N'){
+      [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]].forEach(([dr,dc])=>{const rr=r+dr,cc=c+dc; add(rr,cc);});
+    } else if(t==='K'){
+      for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++) if(dr||dc){ add(r+dr,c+dc); }
+    } else if(t==='B' || t==='R' || t==='Q'){
+      for(const [dr,dc] of rayDirsFor(t)){
+        let rr=r+dr, cc=c+dc; while(inBounds(rr,cc)){
+          if(!isEmptyOn(s,rr,cc)) break; moves.add(rr+","+cc); rr+=dr; cc+=dc;
+        }
+      }
+    } else if(t==='P'){
+      const dir=color===WHITE?-1:1; // allow diagonal steps only (attacking scope) if empty
+      [[r+dir,c-1],[r+dir,c+1]].forEach(([rr,cc])=>{ if(inBounds(rr,cc)&&isEmptyOn(s,rr,cc)) moves.add(rr+","+cc); });
+    }
+    return moves;
+  }
+
+  function allEmptySquaresOn(s){ const o=new Set(); for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++) if(isEmptyOn(s,r,c)) o.add(r+","+c); return o; }
+
+  function afterMoveIsSafeOn(s, obligations, fromR,fromC,toR,toC){
+    const current=s.turn, enemy=current===WHITE?BLACK:WHITE;
+    const snap=clone(s);
+    snap.board[fromR][fromC]=null;
+    snap.board[toR][toC]={type: s.board[fromR][fromC].type, color: current};
+
+    const fr=squaresAttackedByOn(snap,current);
+    const en=squaresAttackedByOn(snap,enemy);
+    const destKey=toR+","+toC; if((en.get(destKey)||0)>(fr.get(destKey)||0)) return false; // cannot move into threatened position
+
+    for(const [or,oc] of obligations){
+      if(or===fromR && oc===fromC) continue;
+      const k=or+","+oc; const f=fr.get(k)||0, e=en.get(k)||0; if(e>f) return false;
+    }
+    return true;
+  }
+
+  function legalMoveTargetsOn(s,r,c){
+    const p=s.board[r][c]; if(!p) return new Set();
+    const cand = s.movementMode==='anywhere' ? allEmptySquaresOn(s) : losEmptyMovesFromOn(s,r,c,p.type,p.color);
+    const out=new Set();
+    const ob = s.obligations||[];
+    for(const k of cand){ const [rr,cc]=k.split(',').map(Number); if(afterMoveIsSafeOn(s, ob, r,c,rr,cc)) out.add(k); }
+    return out;
+  }
+
+  // --- Rendering ---
+  function renderPieceGlyph(t,color){ const ch=mapBlack[t]; const cls=(color===WHITE?'gIvory':'gOnyx'); return `<span class="glyph ${cls}">${ch}</span>`; }
+
+  // IMPROVED HEATMAP: More intense stacking with lower threshold
+  function heatColor(f,e){
+    const diff = f - e;
+    if(diff === 0) return null;
+    
+    // Enhanced intensity calculation - more visible stacking starting from difference of 1
+    const intensity = Math.min(Math.abs(diff), 10);
+    const baseAlpha = 0.25;  // Increased base visibility
+    const maxAlpha = 0.90;   // Higher max intensity
+    const alpha = baseAlpha + (intensity / 10) * (maxAlpha - baseAlpha);
+    
+    return diff > 0 ? `rgba(16,185,129,${alpha})` : `rgba(239,71,111,${alpha})`;
+  }
+
+  function clearPreviews(){ document.querySelectorAll('.marker.preview').forEach(el=>el.remove()); }
+  function renderPreview(set){ for(const k of set){ const [rr,cc]=k.split(',').map(Number); const idx=rr*SIZE+cc; const sq=boardEl.children[idx]; if(!sq) continue; const m=document.createElement('div'); m.className='marker preview'; sq.appendChild(m);} }
+
+  function renderBoard(){
+    boardEl.innerHTML='';
+    const {union, friendMap, enemyMap}=legalPlacementsOn(state,state.turn);
+    const selectedType=state.selected?.type||null;
+    for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
+      const sq=document.createElement('div'); sq.className='sq'; sq.dataset.r=r; sq.dataset.c=c;
+      const p=state.board[r][c]; if(p){ sq.innerHTML=renderPieceGlyph(p.type,p.color); }
+
+      /* visual blue highlight when a board piece is selected to move */
+      if(state.selected && state.selected.from && state.selected.from.r===r && state.selected.from.c===c){
+        sq.classList.add('selected-board');
+      }
+
+      if(state.heatmap){ const k=r+','+c; const col=heatColor((friendMap.get(k)||0),(enemyMap.get(k)||0)); if(col){ const m=document.createElement('div'); m.className='marker heat'; m.style.background=col; sq.appendChild(m);} }
+
+      // events
+      sq.addEventListener('mouseenter',()=>{
+        clearPreviews();
+        if(state.selected && state.selected.from){ // moving a board piece
+          const targets = legalMoveTargetsOn(state, state.selected.from.r, state.selected.from.c);
+          if(targets.has(r+","+c)) renderPreview(hypotheticalAttacks(r,c,state.selected.type,state.turn,state));
+        } else if(selectedType){ // bank placement hover preview
+          const key=r+','+c; if(!union.has(key)||!isEmpty(r,c)) return; renderPreview(hypotheticalAttacks(r,c,selectedType,state.turn,state));
+        }
+      });
+      sq.addEventListener('mouseleave',clearPreviews);
+
+      sq.addEventListener('click',()=>onSquareClick(r,c));
+
+      boardEl.appendChild(sq);
+    }
+
+    // draw threatened rings
+    const currOb=state.obligations||[]; for(const [rr,cc] of currOb){ const idx=rr*SIZE+cc; const sq=boardEl.children[idx]; if(sq){ const ring=document.createElement('div'); ring.className='ring'; sq.appendChild(ring);} }
+    if(state.justStartedTurn && currOb.length){ parchment(); for(const [rr,cc] of currOb){ const idx=rr*SIZE+cc; const sq=boardEl.children[idx]; if(sq){ const ar=document.createElement('div'); ar.className='arrow'; sq.appendChild(ar); setTimeout(()=>ar.remove(),900);} } }
+
+    // if a board piece is selected, show all legal targets as previews
+    if(state.selected && state.selected.from){
+      renderPreview( legalMoveTargetsOn(state, state.selected.from.r, state.selected.from.c) );
+    }
+
+    state.justStartedTurn=false;
+  }
+
+  function renderBank(side){ const el=side===WHITE?bankWhiteEl:bankBlackEl; el.innerHTML=''; const b=state.bank[side]; const isTurn=state.turn===side;
+    for(const t of ['K','Q','R','B','N','P']){ const cnt=b[t]??0; const cell=document.createElement('div'); cell.className='piece'; if(cnt<=0) cell.classList.add('disabled'); if(isTurn && state.selected?.type===t && !state.selected?.from) cell.classList.add('selected'); const cls=(side===WHITE?'gIvory':'gOnyx'); cell.innerHTML=`<span class="glyph ${cls}">${mapBlack[t]}</span><span class="count">${Math.max(cnt,0)}</span>`; cell.addEventListener('click',()=>{ if(!isTurn||cnt<=0) return; state.selected=(state.selected && state.selected.type===t && !state.selected.from)? null : {type:t,color:side}; woodClick(); updateCursor(); render(); }); el.appendChild(cell);} }
+
+  function updateStatus(){
+    if(state.draw){ winnerEl.style.display='block'; winnerEl.textContent='Draw — both banks are empty.'; statusEl.textContent=''; return; }
+    if(state.winner){ winnerEl.style.display='block'; winnerEl.textContent=`${state.winner===WHITE?'White':'Black'} wins.`; statusEl.textContent=''; }
+    else {
+      winnerEl.style.display='none';
+      const n = state.gameMode==='sudden' ? state.obligations.length : 0;
+      let extra = '';
+      if(state.gameMode==='sudden' && n) {
+        extra = ` • Forced defense on ${n} threatened piece${n>1?'s':''}`;
+      } else if(state.gameMode==='queens') {
+        extra = ' • Queens Gambit mode';
+      } else if(state.gameMode==='total') {
+        extra = ' • Total War mode';
+      }
+      const aiTag = (state.ai.enabled && state.turn===BLACK) ? ' • AI thinking…' : '';
+      statusEl.textContent = `${state.turn===WHITE?'White':'Black'} to move${extra}${aiTag}.`;
+    }
+  }
+
+  function renderLog(){
+    logList.innerHTML=''; state.log.forEach((e,i)=>{ const li=document.createElement('li'); li.textContent=`${i+1}. ${e}`; logList.appendChild(li); });
+    // auto-scroll to latest
+    const wrap=logList.parentElement; wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  function applyShatterEffects(){
+    if(!state.effectsShatter || !state.effectsShatter.length) return;
+    const items = state.effectsShatter.splice(0);
+    for(const it of items){
+      const idx = it.r*SIZE + it.c; const sq = boardEl.children[idx]; if(!sq) continue;
+      const rect = sq.getBoundingClientRect(); const base = boardEl.getBoundingClientRect();
+      const wrap = document.createElement('div'); wrap.className='shatter';
+      wrap.style.left = (rect.left - base.left) + 'px';
+      wrap.style.top  = (rect.top  - base.top ) + 'px';
+      wrap.style.width = rect.width + 'px'; wrap.style.height = rect.height + 'px';
+      for(let i=0;i<6;i++){
+        const s=document.createElement('div'); s.className='shard';
+        const dx=(Math.random()*120-60)+'px';
+        const dy=(Math.random()*-80-20)+'px';
+        const rot=(Math.random()*1.6-0.8)+'turn';
+        s.style.setProperty('--dx', dx); s.style.setProperty('--dy', dy); s.style.setProperty('--rot', rot);
+        s.style.animation='shatter 520ms ease-out forwards';
+        const span=document.createElement('span'); span.className='glyph ' + (it.color===WHITE?'gIvory':'gOnyx'); span.style.fontSize='38px'; span.textContent = it.ch;
+        s.appendChild(span); wrap.appendChild(s);
+      }
+      boardEl.appendChild(wrap);
+      setTimeout(()=>wrap.remove(), 560);
+    }
+  }
+
+  function render(){ renderBank(WHITE); renderBank(BLACK); renderBoard(); applyShatterEffects(); renderLog(); updateStatus(); maybeAI(); }
+
+  // Cursor shows selected piece as SVG (guarded)
+  function cursorSVGFor(type,color){ const ch=mapBlack[type]; let fill='#000'; try{ fill=getComputedStyle(document.documentElement).getPropertyValue(color===WHITE?'--ivory':'--onyx').trim()||'#000'; }catch{} return `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><text x='50%' y='58%' text-anchor='middle' font-size='56' font-family='\"Segoe UI Symbol\", system-ui' fill='${fill}'>${ch}</text></svg>`; }
+  function updateCursor(){ if(!state.selected || state.selected.from){ boardEl.style.cursor='auto'; return; } try{ const svg=cursorSVGFor(state.selected.type,state.turn); const blob=new Blob([svg],{type:'image/svg+xml'}); const url=URL.createObjectURL(blob); boardEl.style.cursor=`url(${url}) 24 24, pointer`; setTimeout(()=>URL.revokeObjectURL(url),2000); }catch{} }
+
+  // --- Interaction helpers ---
+  function coordToAlg(r,c){ return 'abcdefgh'[c] + (8-r); }
+  function hasQueensOnBoard(color) { for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){ const p=state.board[r][c]; if(p && p.color === color && p.type === 'Q') return true; } return false; }
+  function countPiecesOnBoard(color) { let count = 0; for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){ const p=state.board[r][c]; if(p && p.color === color) count++; } return count; }
+
+  // --- Helpers that include BANK + BOARD ---
+  function bankPieces(s,color){ let sum=0; const b=s.bank[color]||{}; for(const k in b){ sum += b[k]||0; } return sum; }
+  function totalPieces(s,color){ return countPiecesOnBoardOn(s,color) + bankPieces(s,color); }
+  function countPiecesOnBoardOn(s,color){ let count = 0; for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){ const p=s.board[r][c]; if(p && p.color === color) count++; } return count; }
+  function queensRemaining(s,color){
+    let on=0; for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){ const p=s.board[r][c]; if(p && p.color===color && p.type==='Q') on++; }
+    return on + ((s.bank[color] && s.bank[color].Q) ? s.bank[color].Q : 0);
+  }
+
+  // CHECK FOR NO-MOVEMENT WIN CONDITION
+  function checkNoMovementWinCondition() {
+    if (state.movementMode !== 'none') return false;
+    
+    // Check if both banks are empty
+    const whiteBankEmpty = bankPieces(state, WHITE) === 0;
+    const blackBankEmpty = bankPieces(state, BLACK) === 0;
+    
+    if (whiteBankEmpty && blackBankEmpty) {
+      const whiteOnBoard = countPiecesOnBoard(WHITE);
+      const blackOnBoard = countPiecesOnBoard(BLACK);
+      
+      if (whiteOnBoard > blackOnBoard) {
+        state.winner = WHITE;
+        state.log.push(`Game over: White wins with ${whiteOnBoard} pieces vs ${blackOnBoard}`);
+        return true;
+      } else if (blackOnBoard > whiteOnBoard) {
+        state.winner = BLACK;
+        state.log.push(`Game over: Black wins with ${blackOnBoard} pieces vs ${whiteOnBoard}`);
+        return true;
+      } else {
+        state.draw = true;
+        state.log.push(`Game over: Draw with ${whiteOnBoard} pieces each`);
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  function tryPlace(r,c){
+    const {union}=legalPlacementsOn(state,state.turn); const key=r+','+c; if(!union.has(key) || !isEmpty(r,c)) { errorMuffle(); return false; }
+    let t=state.selected?.type||null;
+    if(!t){
+      const remaining=Object.entries(state.bank[state.turn]).filter(([,cnt])=>cnt>0).map(([tt])=>tt);
+      if(remaining.length===1) t=remaining[0];
+      else { t=prompt(`Choose a piece to place on ${coordToAlg(r,c)} (K,Q,R,B,N,P). Remaining: ${remaining.join(',')}`); if(!t) return false; t=t.toUpperCase(); if(!remaining.includes(t)) { errorMuffle(); return false; } }
+    }
+    placePiece(r,c,t,state.turn); state.bank[state.turn][t]-=1; woodClick();
+    state.log.push(`${state.turn===WHITE?'White':'Black'}: place ${t}@${coordToAlg(r,c)}`);
+    return true;
+  }
+
+  function tryMove(toR,toC){
+    if(!state.selected || !state.selected.from) return false;
+    const fromR=state.selected.from.r, fromC=state.selected.from.c;
+    const targets=legalMoveTargetsOn(state,fromR,fromC); const key=toR+","+toC; if(!targets.has(key)) { errorMuffle(); return false; }
+    const piece=state.board[fromR][fromC];
+    state.board[fromR][fromC]=null; state.board[toR][toC]=piece; woodClick();
+    state.log.push(`${state.turn===WHITE?'White':'Black'}: move ${piece.type} ${coordToAlg(fromR,fromC)}→${coordToAlg(toR,toC)}`);
+    return true;
+  }
+
+  function onSquareClick(r,c){
+    if(state.winner||state.draw) return;
+    if(state.ai.enabled && state.turn===BLACK) return; // lock clicks during AI turn
+
+    const cell=state.board[r][c];
+
+    // 1) Selecting a board piece for movement
+    if(cell && cell.color===state.turn && state.movementMode!=='none'){
+      if(state.selected && state.selected.from && state.selected.from.r===r && state.selected.from.c===c){ state.selected=null; clearPreviews(); render(); return; }
+      state.selected={type:cell.type, color:cell.color, from:{r,c}}; updateCursor(); render(); return;
+    }
+
+    // 2) Empty square clicked: either place from bank or move selected board piece
+    const mustDefend = [...state.obligations];
+
+    const prev = snapshot(state);
+
+    const acted = cell ? false : (state.selected && state.selected.from ? tryMove(r,c) : tryPlace(r,c));
+    if(!acted){ return; }
+
+    // IMPROVED: Full cascade resolution with proper threat recalculation
+    if(resolveConsequencesWithCascade(state, mustDefend)) return; // ends game
+
+    // Check no-movement win condition
+    if(checkNoMovementWinCondition()) {
+      bell();
+      render();
+      return;
+    }
+
+    // push snapshot AFTER successful action to allow Undo
+    state.history.push(prev);
+
+    // Switch turn
+    switchTurn(state);
+    render();
+  }
+
+  function snapshot(s){
+    return {
+      board: clone(s.board), turn: s.turn,
+      bank: clone(s.bank), selected: clone(s.selected),
+      history: s.history.slice(), log: s.log.slice(), heatmap: s.heatmap,
+      gameMode: s.gameMode, movementMode: s.movementMode,
+      pauseBetween: s.pauseBetween, baseTime: s.baseTime,
+      timeLeft: clone(s.timeLeft), lastTick: s.lastTick,
+      tickTimer: null, obligations: clone(s.obligations),
+      justStartedTurn: s.justStartedTurn, winner: s.winner,
+      draw: s.draw, effectsShatter: [], preset: s.preset,
+      config: s.config, ai: clone(s.ai)
+    };
+  }
+
+  // --- Silent-aware turn switch ---
+  function switchTurn(s, silent=false){
+    const next=s.turn===WHITE?BLACK:WHITE;
+    s.turn=next; s.selected=null; updateCursor();
+    s.obligations = threatenedPiecesOfOn(s, s.turn);
+    s.justStartedTurn=true;
+
+    if(s.gameMode === 'sudden'){
+      const us = s.turn;               // side to move now
+      const them = us===WHITE?BLACK:WHITE; // side that just moved
+      const oppLegal  = legalPlacementsOn(s,us).union.size;
+      if(oppLegal === 0){ s.winner = them; if(!silent) bell(); }
+    }
+  }
+
+  // IMPROVED CASCADE RESOLUTION: Handle multiple rounds of piece removal
+  function resolveConsequencesWithCascade(s, mustDefend, silent=false) {
+    const current = s.turn;
+    const next = current === WHITE ? BLACK : WHITE;
+    
+    // Handle sudden death mode first
+    if (s.gameMode === 'sudden' && mustDefend.length) {
+      const friendMap = squaresAttackedByOn(s, current);
+      const enemyMap = squaresAttackedByOn(s, next);
+      let anyStillThreatened = false;
+      
+      for (const [or, oc] of mustDefend) {
+        const k = or + ',' + oc;
+        const f = friendMap.get(k) || 0;
+        const e = enemyMap.get(k) || 0;
+        const stillSamePiece = s.board[or][oc] && s.board[or][oc].color === current;
+        if (stillSamePiece && e > f) {
+          anyStillThreatened = true;
+          break;
+        }
+      }
+      
+      if (anyStillThreatened) {
+        s.winner = next;
+        if (!silent) {
+          bell();
+          render();
+        }
+        return true;
+      }
+    }
+
+    // Handle queens gambit and total war with cascade
+    if ((s.gameMode === 'queens' || s.gameMode === 'total')) {
+      let cascadeRound = 0;
+      let totalDestroyed = 0;
+      let totalDefended = 0;
+      
+      // Keep removing threatened pieces until no more are threatened
+      while (true) {
+        cascadeRound++;
+        const friendMap = squaresAttackedByOn(s, current);
+        const enemyMap = squaresAttackedByOn(s, next);
+        
+        // Find all currently threatened pieces of the current player
+        const threatenedNow = [];
+        for (let r = 0; r < SIZE; r++) {
+          for (let c = 0; c < SIZE; c++) {
+            const p = s.board[r][c];
+            if (!p || p.color !== current) continue;
+            const k = r + ',' + c;
+            const f = friendMap.get(k) || 0;
+            const e = enemyMap.get(k) || 0;
+            if (e > f) {
+              threatenedNow.push([r, c]);
+            }
+          }
+        }
+        
+        if (threatenedNow.length === 0) break; // No more threatened pieces
+        
+        // Remove all threatened pieces and collect shatter effects
+        const doomedInfo = [];
+        let defendedThisRound = 0;
+        
+        for (const [or, oc] of threatenedNow) {
+          const piece = s.board[or][oc];
+          if (piece && piece.color === current) {
+            doomedInfo.push({
+              r: or,
+              c: oc,
+              ch: mapBlack[piece.type],
+              color: piece.color
+            });
+            s.board[or][oc] = null;
+            totalDestroyed++;
+          }
+        }
+        
+        // Add shatter effects for this round
+        if (!silent && doomedInfo.length > 0) {
+          s.effectsShatter.push(...doomedInfo);
+        }
+        
+        // Safety check to prevent infinite loops
+        if (cascadeRound > 20) {
+          console.warn('Cascade resolution stopped after 20 rounds');
+          break;
+        }
+      }
+      
+      // Log and audio feedback
+      if (!silent) {
+        if (totalDefended > 0) {
+          defendPing();
+        }
+        if (totalDestroyed > 0) {
+          s.log.push(`${current === WHITE ? 'White' : 'Black'} lost ${totalDestroyed} piece(s) in ${cascadeRound - 1} cascade round(s).`);
+          breakCrunch();
+        }
+      }
+      
+      // Check win conditions after cascade
+      if (s.gameMode === 'queens') {
+        const wQ = queensRemaining(s, WHITE);
+        const bQ = queensRemaining(s, BLACK);
+        if (wQ === 0 && bQ === 0) {
+          s.draw = true;
+          if (!silent) render();
+          return true;
+        }
+        if (current === WHITE && wQ === 0) {
+          s.winner = BLACK;
+          if (!silent) {
+            bell();
+            render();
+          }
+          return true;
+        }
+        if (current === BLACK && bQ === 0) {
+          s.winner = WHITE;
+          if (!silent) {
+            bell();
+            render();
+          }
+          return true;
+        }
+      }
+      
+      if (s.gameMode === 'total') {
+        const curTot = totalPieces(s, current);
+        const oppTot = totalPieces(s, next);
+        if (curTot === 0 && oppTot > 0) {
+          s.winner = next;
+          if (!silent) {
+            bell();
+            render();
+          }
+          return true;
+        }
+        if (curTot === 0 && oppTot === 0) {
+          s.draw = true;
+          if (!silent) render();
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+
+  // --- Controls ---
+  function cancelAIThinking(){
+    if(state.ai && state.ai.timerId){ clearTimeout(state.ai.timerId); state.ai.timerId=null; }
+    state.ai.thinking=false;
+  }
+
+  // FIXED UNDO LOGIC
+  btnUndo.addEventListener('click', () => {
+    if (!state.history.length) return; // Nothing to undo
+    
+    cancelAIThinking(); // Always cancel AI if it's thinking
+    
+    if (state.ai.enabled) {
+      // AI mode: smart undo behavior
+      if (state.turn === BLACK && state.ai.thinking) {
+        // AI is thinking - just cancel and undo player's last move
+        state = state.history.pop();
+      } else if (state.turn === WHITE) {
+        // Player's turn - undo both AI's move and player's previous move
+        if (state.history.length >= 1) state = state.history.pop(); // Undo AI move
+        if (state.history.length >= 1) state = state.history.pop(); // Undo player's previous move
+      } else {
+        // Edge case: AI's turn but not thinking
+        state = state.history.pop();
+      }
+    } else {
+      // Human vs Human: simple single-step undo
+      state = state.history.pop();
+    }
+    
+    render();
+  });
+
+  btnRestart.addEventListener('click', () => {
+    cancelAIThinking();
+    const cfg = state.config || lastConfig || {
+      time: 0, pause: false, heatmap: true,
+      mode: state.gameMode || 'sudden',
+      movement: state.movementMode || 'none',
+      preset: state.preset || 'basic',
+      ai: clone(state.ai)
+    };
+    startGame(cfg);
+  });
+  if(btnExit) btnExit.addEventListener('click', ()=>{
+    cancelAIThinking();
+    gameLocked=false;
+    const cfg = state.config || lastConfig || { time:0, pause:false, heatmap:true, mode: state.gameMode||'sudden', movement: state.movementMode||'none', preset: state.preset||'basic', ai: clone(state.ai) };
+    timeControlSetup.value = String(cfg.time||0);
+    pauseSetup.checked = !!cfg.pause;
+    heatmapSetup.checked = !!cfg.heatmap;
+    gameModeSetup.value = cfg.mode;
+    movementSetup.value = cfg.movement;
+    armySetup.value = cfg.preset;
+    aiEnable.checked = !!cfg.ai?.enabled;
+    aiDepth.value = String(cfg.ai?.depth||3);
+    aiStyle.value = cfg.ai?.style||'balanced';
+    gameWrap.classList.add('hidden');
+    setupEl.classList.remove('hidden');
+  });
+
+  // --- Setup & Start Game ---
+  function readSetupConfig(){
+    return {
+      time: +timeControlSetup.value||0,
+      pause: !!pauseSetup.checked,
+      heatmap: !!heatmapSetup.checked,
+      mode: gameModeSetup.value,
+      movement: movementSetup.value,
+      preset: armySetup.value,
+      ai: { enabled: !!aiEnable.checked, depth: +aiDepth.value||3, style: aiStyle.value||'balanced' }
+    };
+  }
+
+  function startGame(cfg){
+    lastConfig = cfg; gameLocked = true;
+    state = makeFreshState(cfg.preset);
+    state.gameMode = cfg.mode;
+    state.movementMode = cfg.movement;
+    state.heatmap = cfg.heatmap;
+    state.pauseBetween = cfg.pause;
+    state.config = cfg;
+    state.ai = clone(cfg.ai || {enabled:false, depth:3, style:'balanced'});
+    state.ai.thinking=false; state.ai.timerId=null;
+
+    // show game, hide setup
+    gameWrap.classList.remove('hidden');
+    setupEl.classList.add('hidden');
+
+    state.obligations = threatenedPiecesOfOn(state, state.turn);
+    state.log = [`Started • Mode: ${cfg.mode}, Movement: ${cfg.movement}, Army: ${cfg.preset}${state.ai.enabled?`, AI depth ${state.ai.depth} (${state.ai.style})`:''}`];
+    render();
+  }
+
+  btnStart.addEventListener('click', ()=>{ armAudioOnce(); startGame(readSetupConfig()); });
+
+  function init(){ gameWrap.classList.add('hidden'); setupEl.classList.remove('hidden'); if(location.hash==='#play'){ startGame(readSetupConfig()); } }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+
+  // --- AI ENGINE (Minimax with alpha-beta) ---
+  function pieceValue(t){ return t==='K'? 4.5 : t==='Q'? 9 : t==='R'? 5 : t==='B'? 3.25 : t==='N'? 3 : 1; }
+
+  function evalPosition(s, pov /*color*/){
+    const me=pov, opp=pov===WHITE?BLACK:WHITE;
+    let score=0;
+    // Material (board + bank)
+    function sideMat(color){
+      let v=0; for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){ const p=s.board[r][c]; if(p && p.color===color) v+=pieceValue(p.type); }
+      const b=s.bank[color]; if(b) for(const k in b){ v += (b[k]||0)*pieceValue(k); }
+      return v;
+    }
+    const mat = sideMat(me) - sideMat(opp);
+
+    // Control map differential
+    const f=squaresAttackedByOn(s,me), e=squaresAttackedByOn(s,opp);
+    let ctrl=0; for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){ const k=r+","+c; ctrl += (f.get(k)||0) - (e.get(k)||0); }
+
+    // Threat pressure (our threats vs theirs; and obligations)
+    const myOppThreats = threatenedPiecesOfOn(s, opp).length;
+    const myThreatsAgainst = threatenedPiecesOfOn(s, me).length;
+
+    // Mobility: legal placements available
+    const lpMe = legalPlacementsOn(s, me).union.size;
+    const lpOp = legalPlacementsOn(s, opp).union.size;
+
+    // Mode-specific weights
+    let wSud=0, wQ=0, wTot=0;
+    if(s.gameMode==='sudden') wSud = (myOppThreats - myThreatsAgainst)*4 + (lpMe - lpOp)*2;
+    if(s.gameMode==='queens') wQ   = (queensRemaining(s,me) - queensRemaining(s,opp))*5;
+    if(s.gameMode==='total')  wTot = (totalPieces(s,me) - totalPieces(s,opp))*1.5;
+
+    // Style tweaks
+    const style = s.ai?.style || 'balanced';
+    const styleAgg = style==='aggressive'? 1.25 : style==='defensive'? 0.85 : 1.0;
+
+    score = 6*mat + 1.4*ctrl + styleAgg*(3.5*(myOppThreats - myThreatsAgainst)) + 0.9*(lpMe - lpOp) + wSud + wQ + wTot;
+
+    return score;
+  }
+
+  function isTerminal(s){ return !!(s.winner || s.draw); }
+
+  function generateActions(s){
+    const acts=[]; const color=s.turn; const enemy=color===WHITE?BLACK:WHITE;
+    // Placements
+    const {union} = legalPlacementsOn(s, color);
+    const bank=s.bank[color];
+    for(const t of ['Q','R','B','N','P','K']){ // slight heuristic ordering
+      const cnt=bank[t]||0; if(cnt<=0) continue;
+      for(const k of union){ const [r,c]=k.split(',').map(Number); acts.push({kind:'place', t, r, c}); }
+    }
+    // Moves
+    if(s.movementMode!=='none'){
+      for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
+        const p=s.board[r][c]; if(!p||p.color!==color) continue;
+        const tgts = legalMoveTargetsOn(s,r,c);
+        for(const k of tgts){ const [rr,cc]=k.split(',').map(Number); acts.push({kind:'move', from:[r,c], to:[rr,cc], t:p.type}); }
+      }
+    }
+    return acts;
+  }
+
+  function applyAction(s, action){
+    const ns = snapshot(s); // shallow copy via snapshot, then we will mutate like a real turn
+    ns.history = []; ns.effectsShatter=[]; ns.log=[]; // strip history/log for sim
+
+    const mustDefend = [...ns.obligations];
+
+    if(action.kind==='place'){
+      if(!legalPlacementsOn(ns, ns.turn).union.has(action.r+","+action.c)) return null;
+      if((ns.bank[ns.turn][action.t]||0)<=0) return null;
+      ns.board[action.r][action.c] = {type: action.t, color: ns.turn};
+      ns.bank[ns.turn][action.t] -= 1;
+    } else if(action.kind==='move'){
+      const [fr,fc]=action.from, [tr,tc]=action.to;
+      const p=ns.board[fr][fc]; if(!p || p.color!==ns.turn) return null;
+      const targets = legalMoveTargetsOn(ns, fr, fc);
+      if(!targets.has(tr+","+tc)) return null;
+      ns.board[fr][fc]=null; ns.board[tr][tc]=p;
+    }
+
+    // Silent resolution during simulation
+    if(resolveConsequencesWithCascade(ns, mustDefend, /*silent=*/true)) return ns; // ends
+
+    // Check no-movement win condition for AI simulations
+    if(checkNoMovementWinConditionOn(ns)) return ns;
+
+    // Silent turn switch during simulation
+    switchTurn(ns, /*silent=*/true);
+    return ns;
+  }
+
+  // No-movement win condition checker that works on any state
+  function checkNoMovementWinConditionOn(s) {
+    if (s.movementMode !== 'none') return false;
+    
+    const whiteBankEmpty = bankPieces(s, WHITE) === 0;
+    const blackBankEmpty = bankPieces(s, BLACK) === 0;
+    
+    if (whiteBankEmpty && blackBankEmpty) {
+      const whiteOnBoard = countPiecesOnBoardOn(s, WHITE);
+      const blackOnBoard = countPiecesOnBoardOn(s, BLACK);
+      
+      if (whiteOnBoard > blackOnBoard) {
+        s.winner = WHITE;
+        return true;
+      } else if (blackOnBoard > whiteOnBoard) {
+        s.winner = BLACK;
+        return true;
+      } else {
+        s.draw = true;
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  function minimax(s, depth, alpha, beta, pov){
+    if(depth===0 || isTerminal(s)){
+      return {score: evalPosition(s, pov)};
+    }
+    const meTurn = (s.turn===pov);
+    const acts = generateActions(s);
+    if(acts.length===0){
+      // pass is not allowed: treat as very bad
+      return {score: meTurn? -1e6 : +1e6};
+    }
+
+    // Simple move ordering: prefer center placements and defending obligations
+    acts.sort((a,b)=>{
+      function ord(x){
+        if(x.kind==='place'){
+          const [r,c]=[x.r,x.c]; const dr=Math.abs(3.5-r), dc=Math.abs(3.5-c); return - (6 - (dr+dc));
+        } else {
+          const [r,c]=x.to; const dr=Math.abs(3.5-r), dc=Math.abs(3.5-c); return - (6 - (dr+dc));
+        }
+      }
+      return ord(b)-ord(a);
+    });
+
+    let bestAct=null;
+    if(meTurn){
+      let best=-Infinity;
+      for(const a of acts){
+        const ns = applyAction(s, a); if(!ns) continue;
+        const val = minimax(ns, depth-1, alpha, beta, pov).score;
+        if(val>best){ best=val; bestAct=a; }
+        alpha=Math.max(alpha,best); if(beta<=alpha) break;
+      }
+      return {score: best, act: bestAct};
+    } else {
+      let best=+Infinity;
+      for(const a of acts){
+        const ns = applyAction(s, a); if(!ns) continue;
+        const val = minimax(ns, depth-1, alpha, beta, pov).score;
+        if(val<best){ best=val; bestAct=a; }
+        beta=Math.min(beta,best); if(beta<=alpha) break;
+      }
+      return {score: best, act: bestAct};
+    }
+  }
+
+  function maybeAI(){
+    if(!state.ai.enabled) return;
+    if(state.winner||state.draw) return;
+    if(state.turn!==BLACK) return;
+    if(state.ai.thinking) return;
+    state.ai.thinking=true; updateStatus();
+    // slight delay to show status and avoid blocking UI
+    state.ai.timerId = setTimeout(()=>{
+      try{
+        const depth = Math.max(1, Math.min(4, state.ai.depth|0));
+        const res = minimax(state, depth, -Infinity, +Infinity, BLACK);
+        const act = res.act;
+        if(!act){ state.ai.thinking=false; state.ai.timerId=null; return; }
+        // Execute on real state through existing pathways for logs/effects
+        const mustDefend = [...state.obligations];
+        const prev = snapshot(state);
+        if(act.kind==='place'){
+          state.selected = {type: act.t, color: state.turn};
+          tryPlace(act.r, act.c);
+        } else {
+          state.selected = {type: state.board[act.from[0]][act.from[1]].type, color: state.turn, from: {r: act.from[0], c: act.from[1]}};
+          tryMove(act.to[0], act.to[1]);
+        }
+        if(!resolveConsequencesWithCascade(state, mustDefend)){
+          // Check no-movement win condition
+          if(!checkNoMovementWinCondition()) {
+            state.history.push(prev);
+            switchTurn(state);
+          }
+        }
+      } finally {
+        state.selected=null; state.ai.thinking=false; state.ai.timerId=null; updateCursor(); render();
+      }
+    }, 120);
+  }
+
+  </script>
+</body>
+</html>
