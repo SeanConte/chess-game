@@ -1,7 +1,47 @@
-# Chess0_23 — Unified piece set, centred dials, legible heatmap
+# Chess0_26 — Rebuilt AI with bounded thinking time
 
-This build contains four fully art-directed themes, each matching its approved
-mockup — **Stone & Onyx** (carved fantasy plates), **Neon** (holographic HUD),
+Open `index.html`, enable **Black AI**, and choose a difficulty:
+
+| Difficulty | Normal search budget |
+| --- | ---: |
+| Casual | 120 ms |
+| Club | 350 ms |
+| Strong | 850 ms |
+| Expert | 1,700 ms |
+
+These are thinking-time settings, not chess ratings or fixed search depths.
+Worker startup adds some overhead. The budget shrinks when the AI's clock is
+low. The AI runs offline; there are no accounts, API calls, or external models.
+
+The new engine runs in a background worker so the board, clocks, and controls
+remain responsive. It uses iterative alpha-beta search, a bounded cache with
+correct score bounds, full legal candidate lists, and tactical extensions for
+outnumbered pieces. Evaluation follows Chess II's win conditions, including
+survivor counts, queens, deployment space, and rescue opportunities.
+Undo, Restart, Exit, and clock expiration cancel the pending search.
+A cooperative fallback is available if workers are blocked by the browser.
+
+See `AI_ENGINE.md` for design and validation notes. Run the rule/tactics suite
+with `node tests/ai.test.cjs` (Node only; no dependencies).
+
+All five themes retain the shared viewport-aware layout.
+Desktop keeps both side banks and scales the board and pieces with available
+width and height. At widths up to 800px, Black's compact bank sits above the
+board and White's selection bank below. Both remain live and usable in local
+two-player games. The move log follows the play area and remains scrollable.
+Smaller screens may still scroll when needed, rather than hiding controls.
+
+The same artwork and game regions are reused. Rules and game mechanics are
+unchanged; starting a match now resets the page scroll position. Version 0.24's
+Art Deco cleanup is retained. Layout rules are in `css/responsive-layout.css`.
+
+Browser checks: core play area fits at 1366×768 and 1024×768, and at 390×844
+and 375×667, across all five themes, without horizontal overflow. Board cells
+remain square. Mobile placement, Undo, Settings, theme switching, and Rules
+were exercised with no JavaScript errors. Art Deco desktop and phone
+screenshots were visually reviewed.
+
+This build contains four art-directed themes — **Stone & Onyx** (carved fantasy plates), **Neon** (holographic HUD),
 **Parchment** (warm editorial print), and **Art Deco** (gold on black marble)
 — alongside the untouched **Classic Slate** baseline. Every theme in the
 picker is now implemented; none are marked "planned". All five share the same

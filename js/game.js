@@ -252,6 +252,7 @@
     };
   }
   let state = makeFreshState('basic');
+  let aiJob=null, aiGeneration=0;
   // Visual-only: algebraic square of the most recent placement/move, used for
   // the amber "last action" board highlight. Not part of game state.
   let lastVisualSquare = null;
@@ -911,8 +912,10 @@
 
   // --- Controls ---
   function cancelAIThinking(){
-    if(state.ai && state.ai.timerId){ clearTimeout(state.ai.timerId); state.ai.timerId=null; }
-    state.ai.thinking=false;
+    aiGeneration++;
+    if(aiJob){if(aiJob.worker)aiJob.worker.terminate();clearTimeout(aiJob.timer);clearTimeout(aiJob.watchdog);aiJob=null;}
+    if(state.ai?.timerId)clearTimeout(state.ai.timerId);
+    state.ai.thinking=false;state.ai.timerId=null;
   }
 
   function undoOneAction(){
@@ -985,6 +988,7 @@
   }
 
   function startGame(cfg){
+    cancelAIThinking();
     lastConfig=clone(cfg);
     lastVisualSquare=null;
     state=makeFreshState(cfg.preset);
@@ -1003,8 +1007,9 @@
 
     setupView.classList.add('hidden');
     gameWrap.classList.remove('hidden');
+    window.scrollTo({top:0, left:0, behavior:'instant'});
     settingsHeatmap.checked=state.heatmap;
-    state.log=[`Started · ${modeLabel(cfg.mode)} · ${movementLabel(cfg.movement)} · ${cfg.preset} army${state.ai.enabled?` · AI depth ${state.ai.depth} (${state.ai.style})`:''}${cfg.time?` · ${cfg.time}s clock`:' · unlimited'}`];
+    state.log=[`Started · ${modeLabel(cfg.mode)} · ${movementLabel(cfg.movement)} · ${cfg.preset} army${state.ai.enabled?` · AI ${['','Casual','Club','Strong','Expert'][state.ai.depth]||'Strong'} (${state.ai.style})`:''}${cfg.time?` · ${cfg.time}s clock`:' · unlimited'}`];
     resumeClock(state);
     render();
   }
@@ -1039,266 +1044,90 @@
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 
-  // --- AI engine (minimax with alpha-beta) ---
-  function pieceValue(t){ return t==='K'? 4.5 : t==='Q'? 9 : t==='R'? 5 : t==='B'? 3.25 : t==='N'? 3 : 1; }
-
-  function evalPosition(s, pov /*color*/){
-    const me=pov, opp=pov===WHITE?BLACK:WHITE;
-    let score=0;
-    // Material (board + bank)
-    function sideMat(color){
-      let v=0; for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){ const p=s.board[r][c]; if(p && p.color===color) v+=pieceValue(p.type); }
-      const b=s.bank[color]; if(b) for(const k in b){ v += (b[k]||0)*pieceValue(k); }
-      return v;
-    }
-    const mat = sideMat(me) - sideMat(opp);
-
-    // Control map differential
-    const f=squaresAttackedByOn(s,me), e=squaresAttackedByOn(s,opp);
-    let ctrl=0; for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){ const k=r+","+c; ctrl += (f.get(k)||0) - (e.get(k)||0); }
-
-    // Threat pressure
-    const myOppThreats = threatenedPiecesOfOn(s, opp).length;
-    const myThreatsAgainst = threatenedPiecesOfOn(s, me).length;
-
-    // Mobility: legal placements available
-    const lpMe = legalPlacementsOn(s, me).union.size;
-    const lpOp = legalPlacementsOn(s, opp).union.size;
-
-    // Mode-specific weights
-    let wSud=0, wQ=0, wTot=0;
-    if(s.gameMode==='sudden') wSud = (myOppThreats - myThreatsAgainst)*4 + (lpMe - lpOp)*2;
-    if(s.gameMode==='queens') wQ   = (queensRemaining(s,me) - queensRemaining(s,opp))*5;
-    if(s.gameMode==='total')  wTot = (totalPieces(s,me) - totalPieces(s,opp))*1.5;
-
-    // Style tweaks
-    const style = s.ai?.style || 'balanced';
-    const styleAgg = style==='aggressive'? 1.25 : style==='defensive'? 0.85 : 1.0;
-
-    score = 6*mat + 1.4*ctrl + styleAgg*(3.5*(myOppThreats - myThreatsAgainst)) + 0.9*(lpMe - lpOp) + wSud + wQ + wTot;
-
-    return score;
-  }
-
-  function generateActions(s){
-    const acts=[]; const color=s.turn;
-    // Placements
-    const {union} = legalPlacementsOn(s, color);
-    const bank=s.bank[color];
-    for(const t of ['Q','R','B','N','P','K']){ // slight heuristic ordering
-      const cnt=bank[t]||0; if(cnt<=0) continue;
-      for(const k of union){ const [r,c]=k.split(',').map(Number); acts.push({kind:'place', t, r, c}); }
-    }
-    // Moves
-    if(s.movementMode!=='none'){
-      for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
-        const p=s.board[r][c]; if(!p||p.color!==color) continue;
-        const tgts = legalMoveTargetsOn(s,r,c);
-        for(const k of tgts){ const [rr,cc]=k.split(',').map(Number); acts.push({kind:'move', from:[r,c], to:[rr,cc], t:p.type}); }
-      }
-    }
-    return acts;
-  }
-
-  function applyAction(s, action){
-    const ns=snapshot(s);
-    ns.history=[]; ns.effectsShatter=[]; ns.log=[];
-
-    if(action.kind==='place'){
-      if(!legalPlacementsOn(ns, ns.turn).union.has(action.r+","+action.c)) return null;
-      if((ns.bank[ns.turn][action.t]||0)<=0) return null;
-      ns.board[action.r][action.c] = {type: action.t, color: ns.turn};
-      ns.bank[ns.turn][action.t] -= 1;
-    } else if(action.kind==='move'){
-      const [fr,fc]=action.from, [tr,tc]=action.to;
-      const p=ns.board[fr][fc]; if(!p || p.color!==ns.turn) return null;
-      const targets = legalMoveTargetsOn(ns, fr, fc);
-      if(!targets.has(tr+","+tc)) return null;
-      ns.board[fr][fc]=null; ns.board[tr][tc]=p;
-    }
-
-    finishTurn(ns, /*silent=*/true);
-    return ns;
-  }
-
-
-  const WIN_SCORE=1e9;
-  const SEARCH_TIMEOUT={};
-
-  // The placement game has a much larger branching factor than ordinary chess.
-  // Search therefore uses iterative deepening, alpha-beta, a time budget, and
-  // lightweight action ordering. The selected depth remains the maximum depth;
-  // the AI always returns the best result from the deepest fully completed pass.
-  function quickActionScore(s,a,ours,enemySquares){
-    const color=s.turn;
-    const to=a.kind==='place'?[a.r,a.c]:a.to;
-    const [r,c]=to;
-    const center=7-(Math.abs(3.5-r)+Math.abs(3.5-c));
-    const t=a.t || (a.kind==='move' && s.board[a.from[0]][a.from[1]]?.type) || 'P';
-    let score=center*.55 + pieceValue(t)*.18;
-    const attacks=hypotheticalAttacks(r,c,t,color,s);
-    score += Math.min(20,attacks.size)*.055;
-
-    // Prefer actions that support currently threatened pieces or pressure enemy pieces.
-    for(const [rr,cc] of ours) if(attacks.has(rr+','+cc)) score+=4.5;
-    if(a.kind==='move' && ours.some(([rr,cc])=>rr===a.from[0]&&cc===a.from[1])) score+=3.5;
-    for(const key of enemySquares) if(attacks.has(key)) score+=.65;
-    return score;
-  }
-
-  function orderActionsQuick(s,acts){
-    const color=s.turn, enemy=color===WHITE?BLACK:WHITE;
-    const ours=threatenedPiecesOfOn(s,color);
-    const enemySquares=[];
-    for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
-      const p=s.board[r][c]; if(p&&p.color===enemy) enemySquares.push(r+','+c);
-    }
-    return acts.map(a=>({a,q:quickActionScore(s,a,ours,enemySquares)})).sort((x,y)=>y.q-x.q).map(x=>x.a);
-  }
-
-  function searchActionCap(ctx,depth,isRoot){
-    if(isRoot){
-      if(ctx.rootDepth<=1) return Infinity;
-      if(ctx.rootDepth===2) return 120;
-      if(ctx.rootDepth===3) return 64;
-      return 48;
-    }
-    if(depth>=3) return 24;
-    if(depth===2) return 20;
-    return 16;
-  }
-
-  function guardSearch(ctx){ if(performance.now()>=ctx.deadline) throw SEARCH_TIMEOUT; }
-
-  function stateSearchKey(s,depth,pov){
-    const board=s.board.map(row=>row.map(p=>p?p.color+p.type:'..').join('')).join('/');
-    const banks=[WHITE,BLACK].map(c=>['K','Q','R','B','N','P'].map(t=>s.bank[c][t]||0).join(',')).join('|');
-    return `${depth}:${pov}:${s.turn}:${s.gameMode}:${s.movementMode}:${board}:${banks}`;
-  }
-
-  function minimax(s, depth, alpha, beta, pov, ctx=null){
-    if(s.winner) return {score:s.winner===pov ? WIN_SCORE+depth : -WIN_SCORE-depth};
-    if(s.draw) return {score:0};
-    if(depth===0) return {score:evalPosition(s,pov)};
-
-    const localCtx=ctx||{deadline:performance.now()+5000,rootDepth:depth,cache:new Map()};
-    guardSearch(localCtx);
-    const key=stateSearchKey(s,depth,pov);
-    if(localCtx.cache.has(key)) return {score:localCtx.cache.get(key)};
-
-    const meTurn=(s.turn===pov);
-    let acts=generateActions(s);
-    if(!acts.length) return {score:s.turn===pov ? -WIN_SCORE-depth : WIN_SCORE+depth};
-    const isRoot=depth===localCtx.rootDepth;
-    const cap=searchActionCap(localCtx,depth,isRoot);
-    let rows=[];
-
-    if(isRoot){
-      // At the root, inspect every action once. This catches immediate wins before
-      // beam limiting and gives stronger ordering for the moves the player sees.
-      for(const a of acts){
-        guardSearch(localCtx);
-        const ns=applyAction(s,a); if(!ns) continue;
-        let staticScore;
-        if(ns.winner) staticScore=ns.winner===pov ? WIN_SCORE+depth : -WIN_SCORE-depth;
-        else if(ns.draw) staticScore=0;
-        else staticScore=evalPosition(ns,pov);
-        rows.push({a,ns,staticScore});
-        if(ns.winner===s.turn){
-          const score=s.turn===pov ? WIN_SCORE+depth : -WIN_SCORE-depth;
-          return {score,act:a};
-        }
-      }
-      rows.sort((x,y)=>meTurn?y.staticScore-x.staticScore:x.staticScore-y.staticScore);
-      if(Number.isFinite(cap)&&rows.length>cap) rows=rows.slice(0,cap);
-    } else {
-      acts=orderActionsQuick(s,acts);
-      if(Number.isFinite(cap)&&acts.length>cap) acts=acts.slice(0,cap);
-      rows=acts.map(a=>({a,ns:null,staticScore:0}));
-    }
-
-    let bestAct=null;
-    if(meTurn){
-      let best=-Infinity;
-      for(const row of rows){
-        guardSearch(localCtx);
-        const ns=row.ns||applyAction(s,row.a); if(!ns) continue;
-        const child=minimax(ns,depth-1,alpha,beta,pov,localCtx);
-        const val=child.score;
-        if(val>best){best=val;bestAct=row.a;}
-        alpha=Math.max(alpha,best);
-        if(beta<=alpha) break;
-      }
-      if(!bestAct) best=evalPosition(s,pov);
-      localCtx.cache.set(key,best);
-      return {score:best,act:bestAct};
-    }
-
-    let best=Infinity;
-    for(const row of rows){
-      guardSearch(localCtx);
-      const ns=row.ns||applyAction(s,row.a); if(!ns) continue;
-      const child=minimax(ns,depth-1,alpha,beta,pov,localCtx);
-      const val=child.score;
-      if(val<best){best=val;bestAct=row.a;}
-      beta=Math.min(beta,best);
-      if(beta<=alpha) break;
-    }
-    if(!bestAct) best=evalPosition(s,pov);
-    localCtx.cache.set(key,best);
-    return {score:best,act:bestAct};
-  }
-
-  function chooseAIMove(s,maxDepth,pov=BLACK){
-    const budgets={1:260,2:520,3:950,4:1650};
-    const deadline=performance.now()+(budgets[maxDepth]||950);
-    let best=null;
-    for(let depth=1;depth<=maxDepth;depth++){
-      const ctx={deadline,rootDepth:depth,cache:new Map()};
-      try{
-        const result=minimax(s,depth,-Infinity,Infinity,pov,ctx);
-        if(result.act) best={...result,completedDepth:depth};
-      }catch(err){
-        if(err!==SEARCH_TIMEOUT) throw err;
-        break;
-      }
-      if(performance.now()>=deadline-8) break;
-    }
-    return best;
-  }
-
+  // AI search is isolated from live UI state. The Blob worker also works when
+  // index.html is opened directly from disk; no server/importScripts required.
+  const aiEngine=ChessAI.createEngine();
+  const AI_BUDGETS=[0,120,350,850,1700];
+  function generateActions(s){return Array.from(aiEngine.actions(aiEngine.fromGame(s)),aiEngine.external);}
   function maybeAI(){
-    if(!state.ai.enabled) return;
-    if(state.winner||state.draw) return;
-    if(state.turn!==BLACK) return;
-    if(state.ai.thinking) return;
-    state.ai.thinking=true; updateStatus();
-    // slight delay to show status and avoid blocking UI
-    state.ai.timerId = setTimeout(()=>{
+    if(!state.ai.enabled||state.winner||state.draw||state.turn!==BLACK||state.ai.thinking)return;
+    state.ai.thinking=true;updateStatus();
+    const token=++aiGeneration;
+    const position=aiEngine.fromGame(state),level=Math.max(1,Math.min(4,state.ai.depth|0));
+    syncClock(state);
+    if(state.winner||state.draw){state.ai.thinking=false;render();return;}
+    const remaining=clockEnabled(state)?state.clock.remaining[BLACK]*1000:Infinity;
+    const budget=Math.max(10,Math.min(AI_BUDGETS[level],remaining*.08));
+    const options={budget,style:state.ai.style,extensions:level>=3?2:1};
+    let latest=null,finished=false;
+    aiJob={worker:null,timer:null,watchdog:null};
+    const current=()=>token===aiGeneration&&!finished&&state.ai.enabled&&state.turn===BLACK&&!state.winner&&!state.draw;
+    function stopResources(){
+      if(!aiJob)return;
+      if(aiJob.worker)aiJob.worker.terminate();
+      clearTimeout(aiJob.timer);clearTimeout(aiJob.watchdog);aiJob=null;
+    }
+    function finish(res){
+      if(!current())return;finished=true;stopResources();
       try{
-        const depth = Math.max(1, Math.min(4, state.ai.depth|0));
-        const res = chooseAIMove(state, depth, BLACK);
-        const act = res?.act;
-        if(!act){ state.ai.thinking=false; state.ai.timerId=null; return; }
-        // Execute on the real state through the same turn pipeline used by humans.
-        syncClock(state);
-        if(state.winner||state.draw) return;
-        const prev=snapshot(state);
-        if(act.kind==='place'){
-          state.selected = {type: act.t, color: state.turn};
-          tryPlace(act.r, act.c);
-        } else {
-          state.selected = {type: state.board[act.from[0]][act.from[1]].type, color: state.turn, from: {r: act.from[0], c: act.from[1]}};
-          tryMove(act.to[0], act.to[1]);
+        syncClock(state);if(state.winner||state.draw)return;
+        const act=res?.act;if(!act){
+          resolveNoLegalAction(state);if(!state.winner){state.ai.enabled=false;state.log.push('AI could not choose a move. Local play is available.');}
+          return;
         }
-        state.history.push(prev);
-        recordMove(state,state.lastAction);
-        const ended=completeRealTurn(state);
-        if(ended) bell();
-      } finally {
-        state.selected=null; state.ai.thinking=false; state.ai.timerId=null; updateCursor(); render();
+        const prev=snapshot(state);prev.ai.thinking=false;prev.ai.timerId=null;
+        let acted=false;
+        if(act.kind==='place'){
+          // Revalidate the worker's answer through the live game's action path.
+          if((state.bank[BLACK][act.t]||0)<=0)throw Error('AI returned an unavailable piece');
+          state.selected={type:act.t,color:BLACK};acted=tryPlace(act.r,act.c);
+        }else{
+          const piece=state.board[act.from[0]]?.[act.from[1]];
+          if(!piece||piece.color!==BLACK)throw Error('AI returned an invalid source');
+          state.selected={type:piece.type,color:BLACK,from:{r:act.from[0],c:act.from[1]}};acted=tryMove(...act.to);
+        }
+        if(!acted)throw Error('AI returned an illegal action');
+        state.history.push(prev);recordMove(state,state.lastAction);
+        if(completeRealTurn(state))bell();
+      }catch(error){
+        state.ai.enabled=false;state.log.push('AI stopped after an error; local play is available.');console.error(error);
+      }finally{
+        state.selected=null;state.ai.thinking=false;state.ai.timerId=null;updateCursor();render();
       }
-    }, 120);
+    }
+    function cooperativeFallback(){
+      if(!current())return;
+      stopResources();aiJob={worker:null,timer:null,watchdog:null};
+      const it=aiEngine.search(position,{...options,budget:Math.min(budget,350)});
+      function slice(){
+        if(!current())return;
+        const until=performance.now()+8;
+        try{
+          do{const step=it.next();if(step.value?.act)latest=step.value;
+            if(step.done){finish(step.value||latest);return;}
+          }while(performance.now()<until);
+          aiJob.timer=setTimeout(slice,0);
+        }catch(error){console.error(error);finish(latest);}
+      }
+      aiJob.timer=setTimeout(slice,0);
+    }
+    try{
+      const source=`const engine=(${ChessAI.createEngine.toString()})();onmessage=({data})=>{try{const it=engine.search(data.position,data.options);let step;do{step=it.next();if(step.value?.act)postMessage({result:step.value,done:step.done});}while(!step.done);if(!step.value?.act)postMessage({result:step.value,done:true});}catch(e){postMessage({error:String(e)});}};`;
+      const url=URL.createObjectURL(new Blob([source],{type:'text/javascript'}));
+      let worker;try{worker=new Worker(url);}finally{URL.revokeObjectURL(url);}
+      aiJob.worker=worker;
+      worker.onmessage=({data})=>{
+        if(!current())return;
+        if(data.error){cooperativeFallback();return;}
+        if(data.result?.act)latest=data.result;
+        if(data.done)finish(data.result||latest);
+      };
+      worker.onerror=event=>{event.preventDefault();cooperativeFallback();};
+      // Startup grace is separate from search time. Late messages cannot survive
+      // Undo, Restart, Exit, timeout, or a replacement job.
+      aiJob.watchdog=setTimeout(()=>{if(current()){if(latest)finish(latest);else cooperativeFallback();}},budget+500);
+      worker.postMessage({position,options});
+    }catch(error){cooperativeFallback();}
   }
 
   // Keep visible clocks live without rerendering the board on every tick.

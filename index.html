@@ -5,12 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark light" />
   <title>Chess II</title>
+  <meta name="application-version" content="0.26" />
   <link rel="stylesheet" href="./css/themes.css" />
   <link rel="stylesheet" href="./css/app.css" />
   <link rel="stylesheet" href="./css/theme-stone-onyx.css" />
   <link rel="stylesheet" href="./css/theme-neon.css" />
   <link rel="stylesheet" href="./css/theme-parchment.css" />
   <link rel="stylesheet" href="./css/theme-deco.css" />
+  <link rel="stylesheet" href="./css/deco-refinement.css" />
+  <link rel="stylesheet" href="./css/responsive-layout.css" />
 </head>
 <body>
   <header class="app-header" id="appHeader">
@@ -91,12 +94,12 @@
               <label class="inline-toggle"><input type="checkbox" id="aiEnable" /> <span>Black AI</span></label>
             </div>
             <div class="ai-options">
-              <label>Depth
+              <label>Difficulty
                 <select id="aiDepth">
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3" selected>3</option>
-                  <option value="4">4</option>
+                  <option value="1">Casual</option>
+                  <option value="2">Club</option>
+                  <option value="3" selected>Strong</option>
+                  <option value="4">Expert</option>
                 </select>
               </label>
               <label>Style
@@ -294,6 +297,7 @@
   </div>
 
   <pre id="err"></pre>
+  <script src="./js/ai-engine.js"></script>
   <script src="./js/game.js"></script>
 </body>
 </html>

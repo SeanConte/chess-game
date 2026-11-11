@@ -278,3 +278,61 @@ Note on hit-test verification: with the larger boards, elements below the fold
 report as unclickable unless the harness scrolls them into view first. Use
 `hittest.js`, which does. Stone & Onyx hides the event log by design, so it
 correctly reports no box there.
+
+## 0_24 visual revision
+
+Based on the uploaded 0_23 snapshot (archive commit
+`a01e04cc31dfaf44f2c4ce50acd0c01301f18589`). Art Deco refinement is isolated
+in `css/deco-refinement.css`, loaded after the existing themes. The panel
+sunbursts are hidden; title fans are replaced with `stepped-wing.svg`.
+Brass inlay is quieter, bank cards and clocks are compact, body copy uses
+Source Sans 3, and live panel containers are no longer clipped in Deco.
+The setup primary button's decorative cover is removed so its text remains
+visible. Game JavaScript and the other four theme stylesheets are unchanged.
+
+Original Art Deco mockup was not available for direct comparison. This is a
+new cleanup direction, not a verified reproduction. Static checks passed for
+balanced CSS delimiters, asset references, and unchanged game code. Browser verification
+was blocked by unavailable browser binaries / restricted preview access;
+responsive layout, gameplay hit tests, and visual appearance still need a
+browser review. Previous releases' verification claims do not cover 0_24.
+
+
+## 0_25 responsive layout
+
+`css/responsive-layout.css` loads last. ID-scoped selectors override the old
+fixed theme geometry while preserving materials and piece assets. Desktop
+uses a board size constrained by viewport height and width, proportional bank
+cards, compact clocks, and smaller header/control spacing. Live container
+clip paths (including the fantasy theme's fixed 880px plate) are removed.
+
+At <=800px the center wrapper uses display:contents to order existing live
+regions: Black bank, board, status, White bank, actions. No duplicate board,
+bank, clock, or event handler is introduced. Both banks remain interactive;
+White stays below and Black stays above in local play, without jumping each
+turn. Black cards retain 48px height; White cards 68px. Digital clocks and
+counts remain visible; analog dials and redundant helper labels are omitted
+on phones. The move log stays below the controls, with bounded scroll area.
+
+Only JavaScript change: startGame resets page scroll after revealing the game,
+preventing a mobile setup-page scroll position from hiding the upper bank.
+
+Verified in headless Chromium: five themes at 1366x768, 1024x768, 390x844,
+and 375x667, no horizontal overflow and core play controls within the viewport.
+Art Deco desktop/mobile screenshots inspected. Mobile placement, undo, theme
+switching, Settings and Rules passed; no JS errors. Earlier 0_24 browser
+limitations have been resolved for this pass.
+
+
+## 0_26 AI rebuild
+
+New `js/ai-engine.js` exports a self-contained factory for both Blob workers and
+Node tests. `index.html` loads it before game.js. The old engine is removed;
+game.js now owns a cancellable controller and revalidates worker actions through
+the live action pipeline. `generateActions` delegates to the new compact engine.
+Difficulty keeps the internal ai.depth field for config compatibility, but is
+now a time-budget selector, not a depth cap. See AI_ENGINE.md for details.
+
+No visual/layout changes beyond renaming the difficulty control. Tests contain
+a frozen pre-rebuild rules reference, never loaded by the app. Keep parity tests
+when changing either live turn resolution or engine simulation.
