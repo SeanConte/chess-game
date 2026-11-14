@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="104" viewBox="0 0 280 104" fill="none">
+<defs>
+<linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#f0d89a"/><stop offset=".5" stop-color="#c9a55e"/>
+<stop offset="1" stop-color="#8a6d34"/>
+</linearGradient>
+</defs>
+<g stroke="#c9a55e" opacity=".8">
+<line x1="125" y1="94" x2="114" y2="94" stroke-width="1.15"/>
+<line x1="125.09" y1="92.32" x2="109.52" y2="90.57" stroke-width="0.6"/>
+<line x1="125.38" y1="90.66" x2="104.61" y2="85.92" stroke-width="1.15"/>
+<line x1="125.84" y1="89.05" x2="100.15" y2="80.05" stroke-width="0.6"/>
+<line x1="126.49" y1="87.49" x2="96.57" y2="73.09" stroke-width="1.15"/>
+<line x1="127.3" y1="86.02" x2="94.22" y2="65.23" stroke-width="0.6"/>
+<line x1="128.27" y1="84.65" x2="93.33" y2="56.78" stroke-width="1.15"/>
+<line x1="129.39" y1="83.39" x2="94.08" y2="48.08" stroke-width="0.6"/>
+<line x1="130.65" y1="82.27" x2="96.54" y2="39.5" stroke-width="1.15"/>
+<line x1="132.02" y1="81.3" x2="100.68" y2="31.43" stroke-width="0.6"/>
+<line x1="133.49" y1="80.49" x2="106.4" y2="24.22" stroke-width="1.15"/>
+<line x1="135.05" y1="79.84" x2="113.49" y2="18.23" stroke-width="0.6"/>
+<line x1="136.66" y1="79.38" x2="121.68" y2="13.73" stroke-width="1.15"/>
+<line x1="138.32" y1="79.09" x2="130.64" y2="10.94" stroke-width="0.6"/>
+<line x1="140" y1="79" x2="140" y2="10" stroke-width="1.15"/>
+<line x1="141.68" y1="79.09" x2="149.36" y2="10.94" stroke-width="0.6"/>
+<line x1="143.34" y1="79.38" x2="158.32" y2="13.73" stroke-width="1.15"/>
+<line x1="144.95" y1="79.84" x2="166.51" y2="18.23" stroke-width="0.6"/>
+<line x1="146.51" y1="80.49" x2="173.6" y2="24.22" stroke-width="1.15"/>
+<line x1="147.98" y1="81.3" x2="179.32" y2="31.43" stroke-width="0.6"/>
+<line x1="149.35" y1="82.27" x2="183.46" y2="39.5" stroke-width="1.15"/>
+<line x1="150.61" y1="83.39" x2="185.92" y2="48.08" stroke-width="0.6"/>
+<line x1="151.73" y1="84.65" x2="186.67" y2="56.78" stroke-width="1.15"/>
+<line x1="152.7" y1="86.02" x2="185.78" y2="65.23" stroke-width="0.6"/>
+<line x1="153.51" y1="87.49" x2="183.43" y2="73.09" stroke-width="1.15"/>
+<line x1="154.16" y1="89.05" x2="179.85" y2="80.05" stroke-width="0.6"/>
+<line x1="154.62" y1="90.66" x2="175.39" y2="85.92" stroke-width="1.15"/>
+<line x1="154.91" y1="92.32" x2="170.48" y2="90.57" stroke-width="0.6"/>
+<line x1="155" y1="94" x2="166" y2="94" stroke-width="1.15"/>
+</g>
+<g fill="#c9a55e" opacity=".85" stroke="none">
+<circle cx="110" cy="94" r="1.1"/>
+<circle cx="92.97" cy="71.35" r="1.1"/>
+<circle cx="94.05" cy="36.38" r="1.1"/>
+<circle cx="120.79" cy="9.83" r="1.1"/>
+<circle cx="159.21" cy="9.83" r="1.1"/>
+<circle cx="185.95" cy="36.38" r="1.1"/>
+<circle cx="187.03" cy="71.35" r="1.1"/>
+<circle cx="170" cy="94" r="1.1"/>
+</g>
+<g stroke="url(#g)" stroke-width="1.15" fill="none">
+<path d="M 6 94 H 122"/>
+<path d="M 158 94 H 274"/>
+<path d="M 20 98.5 H 125"/>
+<path d="M 155 98.5 H 260"/>
+<path d="M 140 81 L 153 94 L 140 107 L 127 94 Z"/>
+</g>
+<path d="M 140 86.85 L 147.15 94 L 140 101.15 L 132.85 94 Z" fill="#c9a55e" opacity=".55" stroke="none"/>
+</svg>

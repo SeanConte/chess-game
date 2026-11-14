@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark light" />
   <title>Chess II</title>
-  <meta name="application-version" content="0.26" />
+  <meta name="application-version" content="0.27" />
   <link rel="stylesheet" href="./css/themes.css" />
   <link rel="stylesheet" href="./css/app.css" />
   <link rel="stylesheet" href="./css/theme-stone-onyx.css" />
@@ -295,6 +295,21 @@
       </div>
     </aside>
   </div>
+
+  <dialog id="welcomeDialog" class="modal-panel welcome-dialog" aria-labelledby="welcomeTitle" aria-describedby="welcomeCopy">
+    <div class="modal-head">
+      <h2 id="welcomeTitle">Welcome to Chess II</h2>
+    </div>
+    <div id="welcomeCopy" class="welcome-copy">
+      <p>Chess II is a chess-style game inspired by the <a href="https://en.wikipedia.org/wiki/Eight_queens_puzzle" target="_blank" rel="noopener">Eight Queens Puzzle</a>.</p>
+      <p><strong>Every match starts with an empty board.</strong> You deploy pieces as you play. If more enemy pieces than friendly ones cover one of your pieces’ squares at the end of your turn, that piece is outnumbered. Most modes remove outnumbered pieces automatically. In Sudden Death, you lose the match.</p>
+      <p>There are several game modes, and some are further along in development than others.</p>
+    </div>
+    <form method="dialog" class="welcome-actions">
+      <label class="inline-toggle"><input id="skipWelcome" type="checkbox" /> <span>Don’t show this again</span></label>
+      <button class="primary-button" type="submit" autofocus>Continue</button>
+    </form>
+  </dialog>
 
   <pre id="err"></pre>
   <script src="./js/ai-engine.js"></script>

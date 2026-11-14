@@ -1,4 +1,10 @@
-# Chess0_26 — Rebuilt AI with bounded thinking time
+# Chess0_27 — Welcome dialog
+
+On opening Chess II, the welcome dialog introduces the empty board and
+automatic elimination rules. Check **Don’t show this again** to skip it on
+future visits in the same browser.
+
+## AI with bounded thinking time
 
 Open `index.html`, enable **Black AI**, and choose a difficulty:
 

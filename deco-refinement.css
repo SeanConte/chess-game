@@ -1,0 +1,150 @@
+/* Chess0_24 — restrained brass inlay. All rules stay local to Art Deco.
+   Decorative layers are noninteractive; no gameplay or shared layout changes. */
+html[data-theme="deco"] {
+  --ui-font:"Source Sans 3",sans-serif;
+  --gold:#bfa16a; --gold-hi:#e1c995; --gold-lo:#77613c;
+  --gold-grad:linear-gradient(135deg,#79643f,#c8ad76 35%,#968050 70%,#c5a66b);
+  --text:#e3dfd5; --muted:#aaa28f;
+  --line:rgba(191,161,106,.25); --line-strong:rgba(191,161,106,.5);
+  --side-width:266px; --stage-gap:22px; --ch-panel:16px;
+}
+html[data-theme="deco"] body::before{opacity:.28}
+html[data-theme="deco"] .app-header{
+  clip-path:none;background:none;margin-top:24px;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+}
+html[data-theme="deco"] .page-topline{display:none}
+html[data-theme="deco"] .app-header__inner{min-height:90px}
+html[data-theme="deco"] .app-header__inner::before{display:none}
+html[data-theme="deco"] .brand-title{
+  font-size:38px;font-weight:500;letter-spacing:.18em;
+  color:var(--gold-hi);background:none;-webkit-text-fill-color:currentColor;
+  filter:none;text-shadow:0 2px 3px #000;
+}
+html[data-theme="deco"] .brand-block::before,
+html[data-theme="deco"] .brand-block::after{
+  background-image:url("../assets/themes/deco/stepped-wing.svg");
+  width:144px;height:44px;margin-top:-22px;opacity:.8;
+}
+html[data-theme="deco"] .brand-block::before{right:calc(100% + 28px)}
+html[data-theme="deco"] .brand-block::after{left:calc(100% + 28px);transform:scaleX(-1)}
+html[data-theme="deco"] .icon-button{background:var(--line-strong)}
+html[data-theme="deco"] .page-shell{margin-top:24px}
+html[data-theme="deco"] .player-panel{
+  clip-path:none;background:#101214;border:1px solid var(--line-strong);
+  padding:24px 17px 18px;box-shadow:0 12px 32px #0006;
+}
+html[data-theme="deco"] .player-panel::before{
+  inset:5px;clip-path:none;border:1px solid var(--line);
+  background:linear-gradient(145deg,#ffffff04,transparent 40%);
+  pointer-events:none;
+}
+html[data-theme="deco"] .panel-gem,
+html[data-theme="deco"] .panel-point-gem{display:none}
+html[data-theme="deco"] .player-panel.active-turn{filter:none;border-top-color:var(--gold-hi)}
+html[data-theme="deco"] .player-panel__heading h2{font-size:17px;letter-spacing:.15em}
+html[data-theme="deco"] .heading-rule{height:10px;margin:12px auto 17px;width:80%}
+html[data-theme="deco"] .heading-rule::after{
+  width:6px;height:6px;top:3px;background:#151719;
+  border:1px solid var(--gold);box-shadow:none;
+}
+html[data-theme="deco"] .bank{gap:10px;flex:0}
+html[data-theme="deco"] .bank .piece{
+  min-height:142px;padding:10px 7px 8px;
+  background:#151719;border:1px solid rgba(191,161,106,.28);
+  clip-path:none;box-shadow:inset 0 1px 0 #ffffff04;
+}
+html[data-theme="deco"] .bank .piece::before{
+  inset:0;clip-path:none;background:radial-gradient(ellipse at 50% 40%,#bfa16a0c,transparent 75%);
+  pointer-events:none;
+}
+html[data-theme="deco"] .bank .piece.selected{
+  filter:none;border-color:var(--gold-hi);background:#29261e;
+  box-shadow:inset 0 0 0 1px var(--gold-hi);
+}
+html[data-theme="deco"] .bank .piece:not(.disabled):hover{
+  filter:none;border-color:var(--gold);background:#22231f;
+}
+html[data-theme="deco"] .bank .glyph{height:99px;margin:0 auto 5px}
+html[data-theme="deco"] .piece-name{
+  background:none;clip-path:none;font-size:10px;letter-spacing:.14em;
+  font-weight:500;padding:5px 0 0;width:100%;border-top:1px solid var(--line);
+  color:#c9b68c;text-shadow:none;
+}
+html[data-theme="deco"] .piece-name::before{display:none}
+html[data-theme="deco"] .count{font-family:var(--ui-font);font-size:12px;color:#c7bda7}
+html[data-theme="deco"] .player-footer{
+  clip-path:none;background:none;border-top:1px solid var(--line);
+  margin:19px 0 0;padding:19px 0 5px;
+}
+html[data-theme="deco"] .player-footer::before{display:none}
+html[data-theme="deco"] .clock-label{font-size:10px;color:var(--muted);font-weight:500}
+html[data-theme="deco"] .clock-value{font-size:30px;font-weight:500}
+html[data-theme="deco"] .clock-caption{font-family:var(--ui-font);color:var(--muted);opacity:1}
+html[data-theme="deco"] .board-shell{
+  clip-path:none;background:#101214;border:1px solid var(--line-strong);
+  box-shadow:0 14px 34px #0008;
+}
+html[data-theme="deco"] .board-shell::before{clip-path:none;pointer-events:none;opacity:.7}
+html[data-theme="deco"] .board-files,
+html[data-theme="deco"] .board-ranks{font-size:12px;font-weight:500}
+html[data-theme="deco"] .sq-a{
+  background-image:linear-gradient(145deg,#eee4d0b0,#c8b89985),url("../assets/themes/stone-onyx/board-light.webp");
+}
+html[data-theme="deco"] .turn-console{
+  clip-path:none;background:none;border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);padding:13px 12px;gap:16px;flex-wrap:wrap;
+}
+html[data-theme="deco"] .turn-console::before,
+html[data-theme="deco"] .status-line::after,
+html[data-theme="deco"] #turnCounter::before{display:none}
+html[data-theme="deco"] .status-line strong{font-size:15px;letter-spacing:.12em}
+html[data-theme="deco"] .turn-dot{width:6px;height:6px;box-shadow:none}
+html[data-theme="deco"] .status-chip{font-family:var(--ui-font);font-size:11px;letter-spacing:.09em;color:var(--muted)}
+html[data-theme="deco"] .center-actions{gap:12px;margin-top:12px}
+html[data-theme="deco"] .center-actions button{
+  height:46px;font-size:12px;letter-spacing:.1em;
+  background:var(--line-strong);font-weight:500;gap:9px;
+}
+html[data-theme="deco"] .history-panel{
+  clip-path:none;background:#101214;border:1px solid var(--line);
+}
+html[data-theme="deco"] .history-panel::before{clip-path:none;pointer-events:none;opacity:.55}
+html[data-theme="deco"] .history-heading h2{font-size:15px;letter-spacing:.14em}
+html[data-theme="deco"] .history-meta{font-family:var(--ui-font);color:var(--muted)}
+html[data-theme="deco"] .history-heading::after{display:none}
+html[data-theme="deco"] .page-finial{opacity:.5}
+html[data-theme="deco"] .finial-gem{width:6px;height:6px;box-shadow:none}
+/* A solid primary button also avoids the old pseudo-element covering its text. */
+html[data-theme="deco"] .primary-button{background:var(--gold);color:#141411;text-shadow:none}
+html[data-theme="deco"] .primary-button::before{display:none}
+html[data-theme="deco"] .setup-card{clip-path:none;background:#101214;border:1px solid var(--line-strong)}
+html[data-theme="deco"] .setup-card::before{display:none}
+html[data-theme="deco"] .field-help{font-size:13px}
+html[data-theme="deco"] .settings-note{font-size:13px}
+html[data-theme="deco"] button:focus-visible,
+html[data-theme="deco"] .bank .piece:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
+@media(min-width:981px) and (max-width:1250px){
+  html[data-theme="deco"]{--side-width:218px;--stage-gap:14px}
+  html[data-theme="deco"] .game-stage{grid-template-columns:var(--side-width) minmax(0,1fr) var(--side-width)}
+  html[data-theme="deco"] .player-panel{padding:22px 13px 16px}
+  html[data-theme="deco"] .bank .piece{min-height:120px}
+  html[data-theme="deco"] .bank .glyph{height:78px}
+}
+@media(max-width:980px){
+  html[data-theme="deco"] .player-panel{padding:20px 18px}
+  html[data-theme="deco"] .bank .piece{min-height:126px}
+  html[data-theme="deco"] .bank .glyph{height:88px}
+  html[data-theme="deco"] .player-footer{margin-bottom:0}
+  html[data-theme="deco"] .brand-block::before,
+  html[data-theme="deco"] .brand-block::after{width:96px}
+}
+@media(max-width:760px){
+  html[data-theme="deco"] .app-header{margin-top:12px}
+  html[data-theme="deco"] .app-header__inner{min-height:70px;padding:0 8px}
+  html[data-theme="deco"] .brand-title{font-size:27px}
+  html[data-theme="deco"] .page-shell{margin-top:16px}
+  html[data-theme="deco"] .turn-console{gap:8px;padding:12px 6px}
+  html[data-theme="deco"] .status-line strong{font-size:14px}
+  html[data-theme="deco"] .center-actions button{font-size:10px;gap:6px}
+}

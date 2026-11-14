@@ -1,0 +1,716 @@
+/* Chess II — Stone & Onyx theme
+   Art direction pass matching the approved fantasy mockup.
+   Architecture rules honored (see FABLE_HANDOFF.md):
+   - every live region renders exactly once;
+   - all decoration is contained inside the component it belongs to
+     (clip-path layers share one generated geometry; no negative insets,
+     no cross-component overlays, no duplicated game content). */
+
+@font-face{
+  font-family:"Cinzel";
+  src:url("../assets/fonts/Cinzel-var.woff2") format("woff2");
+  font-weight:400 900;
+  font-style:normal;
+  font-display:swap;
+}
+
+html[data-theme="fantasy"]{
+  background:#0d1012;
+  --ui-font:Georgia,"Times New Roman",serif;
+  --display-font:"Cinzel",Georgia,"Times New Roman",serif;
+  --bg:#0d1012;
+  --bg-soft:#15181a;
+  --surface:#1b2022;
+  --surface-2:#101314;
+  --surface-3:#24292b;
+  --text:#e9ddc5;
+  --muted:#a99574;
+  --line:rgba(190,151,91,.40);
+  --line-strong:rgba(220,181,112,.66);
+  --accent:#67c8ff;
+  --accent-soft:rgba(67,181,242,.17);
+  --danger:#dc6556;
+  --ivory:#f4e5bd;
+  --onyx:#171a1c;
+  --white-panel:#cfc4af;
+  --white-panel-text:#2c241a;
+  --black-panel:#191d1f;
+  --black-panel-text:#e6d9bd;
+  --sq-light:#a39a8d;
+  --sq-dark:#3f4547;
+  --heat-friendly-rgb:96,158,208;
+  --heat-enemy-rgb:198,96,76;
+  --heat-alpha-min:.86;
+  --heat-alpha-max:.98;
+  --radius:4px;
+  --shadow:0 16px 34px rgba(0,0,0,.44);
+  --app-max:1480px;
+  --side-width:270px;
+  --stage-gap:16px;
+  --board-max:600px;
+  --panel-padding:16px;
+  --gold:#b9955d;
+  --gold-bright:#e2c589;
+  --gold-dim:#8a6b41;
+}
+
+html[data-theme="fantasy"] body{
+  background:
+    radial-gradient(ellipse 75% 34% at 50% -4%,rgba(190,151,91,.09),transparent 62%),
+    radial-gradient(ellipse 120% 80% at 50% 55%,transparent 55%,rgba(0,0,0,.42)),
+    linear-gradient(rgba(6,8,9,.22),rgba(6,8,9,.55)),
+    url("../assets/themes/stone-onyx/grain.webp"),
+    url("../assets/themes/stone-onyx/dark-stone.webp") center/cover fixed;
+  color:var(--text);
+  letter-spacing:.008em;
+}
+
+html[data-theme="fantasy"] .surface{
+  border:1px solid var(--line);
+  border-radius:4px;
+  box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.035),inset 0 0 0 3px rgba(0,0,0,.16);
+}
+
+/* ---------------------------------------------------------------- Header */
+html[data-theme="fantasy"] .app-header{
+  position:relative;top:auto;
+  background:transparent;border:0;box-shadow:none;backdrop-filter:none;
+}
+html[data-theme="fantasy"] .page-topline{
+  display:block;position:absolute;left:0;right:0;top:7px;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(196,158,98,.40) 9%,rgba(196,158,98,.40) 91%,transparent);
+}
+html[data-theme="fantasy"] .page-topline::after{
+  content:"";position:absolute;left:0;right:0;top:4px;height:1px;
+  background:linear-gradient(90deg,transparent 3%,rgba(196,158,98,.16) 20%,rgba(196,158,98,.16) 80%,transparent 97%);
+}
+html[data-theme="fantasy"] .app-header__inner{
+  width:min(var(--app-max),97vw);
+  min-height:116px;
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+}
+html[data-theme="fantasy"] .brand-block{
+  grid-column:2;
+  min-width:min(620px,52vw);
+  display:grid;place-items:center;
+  position:relative;
+  padding-top:16px;
+}
+html[data-theme="fantasy"] .brand-title{
+  font-family:var(--display-font);
+  font-size:52px;font-weight:700;
+  letter-spacing:.16em;text-indent:.16em;
+  text-transform:uppercase;
+  background:linear-gradient(180deg,#f3ddab 8%,#dcb877 45%,#a37e48 78%,#7d5f34 100%);
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;
+  filter:drop-shadow(0 2px 1px rgba(0,0,0,.85)) drop-shadow(0 0 16px rgba(219,181,112,.14));
+}
+html[data-theme="fantasy"] .brand-title::before{
+  content:"";position:absolute;left:50%;top:-8px;width:17px;height:17px;
+  transform:translateX(-50%);
+  background:url("../assets/themes/stone-onyx/blue-gem.svg") center/contain no-repeat;
+  filter:drop-shadow(0 0 7px rgba(84,195,255,.75));
+}
+html[data-theme="fantasy"] .brand-block::before,
+html[data-theme="fantasy"] .brand-block::after{
+  content:"";position:absolute;top:16px;
+  width:min(24vw,300px);height:5px;
+  background:
+    radial-gradient(circle 2.5px at 3px 50%,#e0c088 99%,transparent),
+    radial-gradient(circle 2.5px at calc(100% - 3px) 50%,#e0c088 99%,transparent),
+    linear-gradient(0deg,transparent 2px,rgba(211,175,110,.72) 2px 3px,transparent 3px);
+}
+html[data-theme="fantasy"] .brand-block::before{right:calc(100% - 32px)}
+html[data-theme="fantasy"] .brand-block::after{left:calc(100% - 32px)}
+html[data-theme="fantasy"] .header-actions{grid-column:3;justify-self:end;align-items:center}
+html[data-theme="fantasy"] .icon-button{
+  width:38px;height:38px;padding:0;
+  display:grid;place-items:center;border-radius:50%;
+  border:1px solid rgba(202,164,101,.5);
+  background:linear-gradient(180deg,#20262a,#101416);
+  color:#dbc59f;
+  box-shadow:inset 0 1px rgba(255,255,255,.07),0 3px 7px rgba(0,0,0,.4);
+}
+html[data-theme="fantasy"] .icon-button__label{display:none}
+html[data-theme="fantasy"] .page-shell{width:min(var(--app-max),97vw);margin:0 auto 30px}
+
+/* ------------------------------------------------------------------ Setup */
+html[data-theme="fantasy"] .setup-card{
+  background:linear-gradient(rgba(20,24,25,.96),rgba(12,15,16,.98)),url("../assets/themes/stone-onyx/black-stone.webp") center/cover;
+}
+html[data-theme="fantasy"] .setup-card h1{font-family:var(--display-font);letter-spacing:.08em;font-weight:600}
+html[data-theme="fantasy"] .field-card{background:rgba(0,0,0,.16);border-color:rgba(190,151,91,.28)}
+html[data-theme="fantasy"] select{background:#171b1c;border-color:rgba(190,151,91,.34)}
+html[data-theme="fantasy"] .primary-button{
+  font-family:var(--display-font);letter-spacing:.08em;
+  border-color:rgba(201,160,96,.6);background:linear-gradient(180deg,#2c3235,#171c1e);color:#e4cfa4;
+}
+
+/* ============================================================ Desktop game
+   The carved-plate geometry below is fixed-size (clip paths authored at
+   316x880), so the ornate layout only engages when it provably fits. */
+@media(min-width:1380px){
+  html[data-theme="fantasy"]{--side-width:316px;--board-max:700px}
+  html[data-theme="fantasy"] .game-view{gap:10px}
+  html[data-theme="fantasy"] .game-stage{
+    display:grid;
+    grid-template-columns:var(--side-width) minmax(660px,744px) var(--side-width);
+    gap:var(--stage-gap);
+    align-items:start;justify-content:center;
+  }
+
+  /* -------------------------------------------------- Carved player plates
+     Layering (all inside the panel's own box):
+       panel        = metal rim (clipped to the outer silhouette)
+       panel::before= stone face + engraved hairline frame (inner silhouette)
+       children     = live content above both                                */
+  html[data-theme="fantasy"] .player-panel{
+    position:relative;
+    height:880px;min-height:880px;
+    padding:36px 28px 56px;
+    overflow:hidden;
+    border:0;border-radius:0;box-shadow:none;
+    clip-path:path("M 0 46 Q 11.3 37.5 13.8 25.3 Q 12 12 25.3 13.8 Q 37.5 11.3 46 0 L 270 0 Q 278.5 11.3 290.7 13.8 Q 304 12 302.2 25.3 Q 304.7 37.5 316 46 L 316 810 Q 304.7 818.5 302.2 830.7 Q 304 844 290.7 842.2 Q 278.5 844.7 270 856 L 208 856 L 198 862 L 158 880 L 118 862 L 108 856 L 46 856 Q 37.5 844.7 25.3 842.2 Q 12 844 13.8 830.7 Q 11.3 818.5 0 810 Z");
+  }
+  html[data-theme="fantasy"] .player-panel::before{
+    content:"";position:absolute;inset:5px;z-index:0;pointer-events:none;
+    clip-path:path("M 0 41 Q 10 33.4 12.3 22.6 Q 10.7 10.7 22.6 12.3 Q 33.4 10 41 0 L 265 0 Q 272.6 10 283.4 12.3 Q 295.3 10.7 293.7 22.6 Q 296 33.4 306 41 L 306 805 Q 296 812.6 293.7 823.5 Q 295.3 835.3 283.4 833.7 Q 272.6 836 265 846 L 200 846 L 191 851.4 L 153 870 L 115 851.4 L 106 846 L 41 846 Q 33.4 836 22.6 833.7 Q 10.7 835.3 12.3 823.5 Q 10 812.6 0 805 Z");
+  }
+  html[data-theme="fantasy"] .player-panel>*{position:relative;z-index:1}
+
+  html[data-theme="fantasy"] .player-panel[data-side="white"]{
+    color:#2c241a;
+    background:linear-gradient(155deg,#efe2c2 0%,#cbb184 22%,#a98c5c 48%,#7c6039 74%,#57411f 100%);
+    filter:drop-shadow(0 16px 22px rgba(0,0,0,.55)) drop-shadow(0 3px 6px rgba(0,0,0,.45));
+  }
+  html[data-theme="fantasy"] .player-panel[data-side="white"]::before{
+    background:
+      url("../assets/themes/stone-onyx/panel-line-ivory.svg") 0 0/100% 100% no-repeat,
+      linear-gradient(150deg,rgba(255,255,255,.12),transparent 34%),
+      linear-gradient(rgba(134,126,114,.34),rgba(116,106,90,.36) 58%,rgba(84,71,52,.42)),
+      url("../assets/themes/stone-onyx/grain.webp"),
+      url("../assets/themes/stone-onyx/ivory-stone.webp") center/cover;
+  }
+  html[data-theme="fantasy"] .player-panel[data-side="black"]{
+    color:#e6d9bd;
+    background:linear-gradient(155deg,#d9b877 0%,#a5824c 20%,#6b5330 45%,#3c2d16 72%,#1c1409 100%);
+    filter:drop-shadow(0 16px 22px rgba(0,0,0,.6)) drop-shadow(0 3px 6px rgba(0,0,0,.5));
+  }
+  html[data-theme="fantasy"] .player-panel[data-side="black"]::before{
+    background:
+      url("../assets/themes/stone-onyx/panel-line-onyx.svg") 0 0/100% 100% no-repeat,
+      linear-gradient(150deg,rgba(255,255,255,.06),transparent 32%),
+      linear-gradient(rgba(30,35,38,.30),rgba(10,13,14,.52)),
+      url("../assets/themes/stone-onyx/grain.webp"),
+      url("../assets/themes/stone-onyx/black-stone.webp") center/cover;
+  }
+
+  /* top + bottom gems on the plate */
+  html[data-theme="fantasy"] .panel-gem{
+    display:block;position:absolute;z-index:2;
+    left:50%;top:15px;width:150px;height:15px;
+    transform:translateX(-50%);
+    background:
+      url("../assets/themes/stone-onyx/blue-gem.svg") center/15px 15px no-repeat,
+      linear-gradient(0deg,transparent 7px,rgba(150,118,70,.55) 7px 8px,transparent 8px) left center/54px 15px no-repeat,
+      linear-gradient(0deg,transparent 7px,rgba(150,118,70,.55) 7px 8px,transparent 8px) right center/54px 15px no-repeat;
+    filter:drop-shadow(0 0 4px rgba(84,195,255,.5));
+    transition:filter .25s ease;
+  }
+  html[data-theme="fantasy"] .player-panel.active-turn .panel-gem{
+    filter:drop-shadow(0 0 4px rgba(120,210,255,.95)) drop-shadow(0 0 12px rgba(84,195,255,.8));
+  }
+  html[data-theme="fantasy"] .panel-point-gem{
+    display:block;position:absolute;z-index:2;
+    left:50%;bottom:16px;width:17px;height:17px;
+    transform:translateX(-50%);
+    background:url("../assets/themes/stone-onyx/blue-gem.svg") center/contain no-repeat;
+    filter:drop-shadow(0 0 5px rgba(84,195,255,.55));
+  }
+
+  /* heading */
+  html[data-theme="fantasy"] .player-panel__heading{
+    display:block;position:relative;text-align:center;
+    padding:6px 0 20px;margin:0 6px;
+  }
+  html[data-theme="fantasy"] .player-panel__heading h2{
+    font-family:var(--display-font);
+    font-size:22px;font-weight:600;letter-spacing:.14em;text-indent:.14em;
+    text-transform:none;
+    font-variant:small-caps;
+  }
+  html[data-theme="fantasy"] .player-panel[data-side="white"] .player-panel__heading h2{color:#33291c;text-shadow:0 1px 0 rgba(255,255,255,.35)}
+  html[data-theme="fantasy"] .player-panel[data-side="black"] .player-panel__heading h2{color:#e8dcbf;text-shadow:0 1px 2px rgba(0,0,0,.7)}
+  html[data-theme="fantasy"] .player-panel .eyebrow{display:none}
+  html[data-theme="fantasy"] .active-indicator{display:none}
+  html[data-theme="fantasy"] .heading-rule{
+    display:block;position:absolute;left:6px;right:6px;bottom:6px;height:9px;
+  }
+  html[data-theme="fantasy"] .heading-rule::before{
+    content:"";position:absolute;left:0;right:0;top:4px;height:1px;
+    background:linear-gradient(90deg,transparent,currentColor 14%,currentColor 86%,transparent);
+    opacity:.45;
+  }
+  html[data-theme="fantasy"] .heading-rule::after{
+    content:"";position:absolute;left:50%;top:1px;width:7px;height:7px;
+    transform:translateX(-50%) rotate(45deg);
+    background:currentColor;opacity:.55;
+    box-shadow:0 0 0 2.5px var(--rule-halo,rgba(0,0,0,0));
+  }
+  html[data-theme="fantasy"] .player-panel[data-side="white"] .heading-rule{--rule-halo:#cfc4af}
+  html[data-theme="fantasy"] .player-panel[data-side="black"] .heading-rule{--rule-halo:#191d1f}
+  html[data-theme="fantasy"] .bank-help{display:none}
+
+  /* -------------------------------------------------------- Bank plaques */
+  html[data-theme="fantasy"] .bank{gap:11px;margin-top:14px}
+  html[data-theme="fantasy"] .bank .piece{
+    min-height:0;
+    padding:10px 8px 12px;
+    border-radius:7px;
+    overflow:hidden;
+    transition:transform .1s ease,box-shadow .15s ease,border-color .1s ease,opacity .1s ease;
+  }
+  html[data-theme="fantasy"] .player-panel[data-side="white"] .bank .piece{
+    border:1px solid rgba(84,62,34,.72);
+    background:
+      linear-gradient(160deg,rgba(255,255,255,.30),transparent 38%,rgba(88,66,36,.10) 88%),
+      linear-gradient(rgba(240,231,211,.38),rgba(199,182,148,.14)),
+      url("../assets/themes/stone-onyx/ivory-stone.webp") center/cover;
+    box-shadow:
+      inset 0 0 0 2px rgba(250,244,228,.6),
+      inset 0 0 0 3.5px rgba(104,79,46,.42),
+      inset 0 10px 16px rgba(255,255,255,.16),
+      inset 0 -8px 14px rgba(90,68,38,.14),
+      0 3px 6px rgba(52,38,18,.34),
+      0 1px 2px rgba(52,38,18,.4);
+  }
+  html[data-theme="fantasy"] .player-panel[data-side="black"] .bank .piece{
+    border:1px solid rgba(178,140,84,.42);
+    background:
+      linear-gradient(160deg,rgba(255,255,255,.055),transparent 34%,rgba(0,0,0,.24) 90%),
+      linear-gradient(rgba(34,40,44,.4),rgba(10,12,14,.5)),
+      url("../assets/themes/stone-onyx/black-stone.webp") center/cover;
+    box-shadow:
+      inset 0 0 0 2px rgba(0,0,0,.5),
+      inset 0 0 0 3.5px rgba(190,152,94,.18),
+      inset 0 10px 16px rgba(255,255,255,.035),
+      inset 0 -10px 18px rgba(0,0,0,.4),
+      0 3px 7px rgba(0,0,0,.5),
+      0 1px 2px rgba(0,0,0,.6);
+  }
+  html[data-theme="fantasy"] .bank .piece:not(.disabled):hover{transform:translateY(-1px);border-color:#d7b579}
+  html[data-theme="fantasy"] .bank .piece.selected{
+    outline:0;border-color:#86d3ff;
+    box-shadow:inset 0 0 0 2px rgba(134,211,255,.9),inset 0 0 14px rgba(90,180,240,.25),0 0 12px rgba(63,177,237,.4);
+  }
+  html[data-theme="fantasy"] .bank .piece.disabled{opacity:.30;filter:saturate(.6) brightness(.85)}
+  html[data-theme="fantasy"] .player-panel[data-side="white"] .bank .piece.disabled{opacity:.42}
+
+  html[data-theme="fantasy"] .glyph-fallback{display:none}
+  html[data-theme="fantasy"] .piece-art{display:block;width:100%;height:100%;object-fit:contain}
+  html[data-theme="fantasy"] .bank .glyph{width:100%;height:100%;min-height:0;margin:0 auto 8px}
+  html[data-theme="fantasy"] .player-panel[data-side="white"] .bank .glyph{filter:drop-shadow(0 4px 4px rgba(68,46,22,.28))}
+  html[data-theme="fantasy"] .player-panel[data-side="black"] .bank .glyph{filter:drop-shadow(0 5px 6px rgba(0,0,0,.6))}
+            
+  html[data-theme="fantasy"] .piece-name{
+    font-family:var(--display-font);
+    font-size:13px;font-weight:600;letter-spacing:.10em;text-indent:.10em;
+    text-transform:none;font-variant:small-caps;
+    margin:4px 0 24px;
+  }
+  html[data-theme="fantasy"] .player-panel[data-side="white"] .piece-name{color:#33291c}
+  html[data-theme="fantasy"] .player-panel[data-side="black"] .piece-name{color:#dfd2b2}
+  html[data-theme="fantasy"] .count{
+    right:50%;bottom:9px;transform:translateX(50%);
+    padding:0;background:transparent;color:inherit;
+    display:flex;align-items:center;gap:6px;
+    font-family:var(--display-font);font-size:14px;font-weight:600;
+  }
+  html[data-theme="fantasy"] .player-panel[data-side="black"] .count{color:#dfd2b2}
+  html[data-theme="fantasy"] .count-gem{
+    display:inline-block;width:12px;height:12px;border:0;transform:none;background:transparent;
+    background-image:url("../assets/themes/stone-onyx/blue-gem.svg");
+    background-size:contain;background-repeat:no-repeat;background-position:center;
+    box-shadow:none;
+    filter:drop-shadow(0 0 3px rgba(69,184,243,.6));
+  }
+
+  /* --------------------------------------------------------------- Clock */
+  html[data-theme="fantasy"] .player-footer{
+    display:block;margin-top:16px;padding:16px 2px 0;
+    border-top:1px solid color-mix(in srgb,currentColor 28%,transparent);
+  }
+  html[data-theme="fantasy"] .material-block{display:none}
+  html[data-theme="fantasy"] .clock-block{
+    --dial-face:#161c1f;--dial-hand:#e8eef0;--dial-rim:#c8a262;
+    position:relative;min-height:104px;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:0 0 0 124px;
+  }
+  html[data-theme="fantasy"] .player-panel[data-side="white"] .clock-block{--dial-face:#e6dcc4;--dial-hand:#1d2830;--dial-rim:#8a6b41}
+  /* dial */
+  html[data-theme="fantasy"] .clock-block::before{
+  box-sizing:border-box;
+    content:"";position:absolute;left:2px;top:50%;width:102px;height:102px;margin-top:-51px;border-radius:50%;
+    border:4px solid var(--dial-rim);
+    background:
+      radial-gradient(circle at 50% 50%,var(--dial-hand) 0 3px,transparent 4px),
+      radial-gradient(circle at 50% 50%,var(--dial-face) 0 60%,transparent 61%),
+      repeating-conic-gradient(from -3.6deg,rgba(96,200,255,1) 0deg 7.2deg,transparent 7.2deg 90deg),
+      repeating-conic-gradient(from -1deg,rgba(130,195,240,.5) 0deg 2deg,transparent 2deg 30deg),
+      radial-gradient(circle at 36% 28%,rgba(255,255,255,.2),transparent 34%,rgba(0,0,0,.34) 76%),
+      var(--dial-face);
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,.55),
+      inset 0 0 0 1px rgba(0,0,0,.5),
+      inset 0 0 0 3px rgba(255,255,255,.06),
+      inset 0 4px 10px rgba(0,0,0,.32),
+      0 5px 10px rgba(0,0,0,.42);
+  }
+  /* hour hand */
+  html[data-theme="fantasy"] .clock-block::after{
+    content:"";position:absolute;left:51.25px;top:50%;width:3.5px;height:28px;margin-top:-28px;
+    background:var(--dial-hand);border-radius:2px;
+    box-shadow:0 1px 2px rgba(0,0,0,.35);
+    transform-origin:50% 100%;
+    transform:rotate(var(--clock-hand-angle,0deg));
+  }
+  /* minute hand */
+  html[data-theme="fantasy"] .clock-minute{
+    display:block;position:absolute;left:51.75px;top:50%;width:2.5px;height:39px;margin-top:-39px;
+    background:var(--dial-hand);border-radius:2px;opacity:.92;
+    box-shadow:0 1px 2px rgba(0,0,0,.3);
+    transform-origin:50% 100%;
+    transform:rotate(var(--clock-second-angle,0deg));
+  }
+  html[data-theme="fantasy"] .clock-block.clock-active::before{
+    box-shadow:
+      inset 0 0 0 2px rgba(0,0,0,.28),
+      inset 0 3px 8px rgba(0,0,0,.3),
+      0 4px 9px rgba(0,0,0,.4),
+      0 0 12px rgba(70,187,244,.42);
+  }
+  html[data-theme="fantasy"] .clock-value{
+    order:1;
+    font-family:var(--display-font);
+    font-size:39px;font-weight:600;line-height:1.05;
+    letter-spacing:.02em;
+  }
+  html[data-theme="fantasy"] .clock-label{
+    order:2;
+    font-family:var(--display-font);
+    font-size:11px;font-weight:600;letter-spacing:.2em;
+    margin-top:8px;opacity:.7;
+  }
+  html[data-theme="fantasy"] .clock-caption{display:none}
+  html[data-theme="fantasy"] .clock-block.low-time .clock-value{color:var(--danger)}
+
+  /* ------------------------------------------------------------- Center */
+  html[data-theme="fantasy"] .center-stage{padding:0;background:transparent;border:0;box-shadow:none;overflow:visible}
+  html[data-theme="fantasy"] .board-region{width:100%;display:grid;place-items:start center;flex:none}
+  html[data-theme="fantasy"] .board-shell{
+    position:relative;width:100%;max-width:790px;
+    grid-template-columns:36px minmax(0,var(--board-max)) 36px;
+    grid-template-rows:34px auto 34px;
+    padding:7px;
+    border:1px solid rgba(200,162,100,.6);
+    border-radius:3px;
+    background:
+      linear-gradient(160deg,rgba(255,255,255,.05),transparent 30%),
+      linear-gradient(rgba(13,16,18,.9),rgba(9,12,13,.96)),
+      url("../assets/themes/stone-onyx/black-stone.webp") center/cover;
+    box-shadow:
+      inset 0 0 0 2px #07090a,
+      inset 0 0 0 3px rgba(219,182,116,.24),
+      inset 0 0 0 5px rgba(7,9,10,.85),
+      inset 0 0 0 6px rgba(219,182,116,.08),
+      inset 0 0 44px rgba(0,0,0,.5),
+      0 12px 26px rgba(0,0,0,.5),
+      0 2px 6px rgba(0,0,0,.45);
+  }
+  html[data-theme="fantasy"] .board{
+    border:1px solid #0a0d0e;
+    outline:1px solid rgba(216,180,114,.5);
+    box-shadow:0 0 0 3px rgba(5,7,8,.8),0 0 18px rgba(0,0,0,.55);
+  }
+  html[data-theme="fantasy"] .board-files,
+  html[data-theme="fantasy"] .board-ranks{
+    font-family:var(--display-font);
+    font-size:16px;font-weight:600;color:#c9a56b;
+    text-shadow:0 1px 2px #000;letter-spacing:.04em;
+  }
+  html[data-theme="fantasy"] .sq{border:1px solid rgba(12,14,15,.22);isolation:isolate}
+  html[data-theme="fantasy"] .sq-a{
+    background-color:var(--sq-light);
+    background-image:linear-gradient(rgba(166,156,140,.14),rgba(130,120,104,.30)),url("../assets/themes/stone-onyx/board-light.webp");
+    background-size:auto,206px 206px;
+  }
+  html[data-theme="fantasy"] .sq-b{
+    background-color:var(--sq-dark);
+    background-image:linear-gradient(rgba(46,53,55,.74),rgba(30,35,37,.84)),url("../assets/themes/stone-onyx/board-dark.webp");
+    background-size:auto,206px 206px;
+  }
+  html[data-theme="fantasy"] .sq-a:hover{background-image:linear-gradient(rgba(196,186,170,.22),rgba(160,150,134,.28)),url("../assets/themes/stone-onyx/board-light.webp")}
+  html[data-theme="fantasy"] .sq-b:hover{background-image:linear-gradient(rgba(58,66,68,.72),rgba(40,46,48,.8)),url("../assets/themes/stone-onyx/board-dark.webp")}
+  html[data-theme="fantasy"] .sq:hover{filter:none}
+  html[data-theme="fantasy"] .board .glyph{width:100%;height:100%;z-index:4;filter:drop-shadow(0 6px 5px rgba(0,0,0,.5))}
+
+  /* board state highlights: contained square frames, mockup-style */
+  html[data-theme="fantasy"] .sq.selected-board::after{
+    inset:0;border-radius:0;
+    background:rgba(110,175,232,.16);
+    box-shadow:inset 0 0 0 2px rgba(141,199,242,.95),inset 0 0 16px rgba(120,185,240,.35);
+    z-index:5;
+  }
+  html[data-theme="fantasy"] .sq.last-action::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:rgba(216,157,44,.15);
+    box-shadow:inset 0 0 0 2px rgba(222,169,62,.9),inset 0 0 16px rgba(214,155,50,.32);
+    z-index:4;
+  }
+  html[data-theme="fantasy"] .ring{
+    inset:0;border-radius:0;
+    background:rgba(198,72,55,.17);
+    box-shadow:inset 0 0 0 2px rgba(226,96,78,.9),inset 0 0 18px rgba(205,75,58,.35);
+    z-index:5;
+  }
+  html[data-theme="fantasy"] .marker.heat{
+    inset:auto;left:50%;top:50%;
+    width:var(--heat-size,11px);height:var(--heat-size,11px);
+    transform:translate(-50%,-50%);
+    border-radius:50%;opacity:1;mix-blend-mode:normal;
+    background:radial-gradient(circle at 38% 32%,rgba(255,255,255,.5),rgba(var(--heat-rgb),.98) 45%,rgba(var(--heat-rgb),.85))!important;
+    border:1px solid rgba(255,255,255,.22);
+    box-shadow:
+      0 0 3px rgba(var(--heat-rgb),.9),
+      0 0 var(--heat-glow,10px) rgba(var(--heat-rgb),.55),
+      0 0 calc(var(--heat-glow,10px)*1.7) rgba(var(--heat-rgb),.16);
+    z-index:2;
+  }
+  html[data-theme="fantasy"] .marker.preview{
+    inset:6%;border-radius:2px;
+    background:rgba(61,165,224,.14);
+    box-shadow:inset 0 0 0 2px rgba(125,213,255,.85);
+    z-index:3;
+  }
+
+  /* ------------------------------------------------------- Status strip */
+  html[data-theme="fantasy"] .turn-console{
+    position:relative;width:100%;max-width:744px;margin-top:10px;
+    padding:10px 46px;border:0;border-radius:2px;
+    border-top:1px solid rgba(122,168,214,.42);
+    border-bottom:1px solid rgba(190,152,92,.2);
+    background:
+      linear-gradient(90deg,transparent 26px,rgba(203,164,101,.4) 27px,rgba(203,164,101,.08) 20%,transparent 30%) left center/100% 1px no-repeat,
+      linear-gradient(270deg,transparent 26px,rgba(203,164,101,.4) 27px,rgba(203,164,101,.08) 20%,transparent 30%) right center/100% 1px no-repeat,
+      linear-gradient(180deg,rgba(26,35,45,.5),rgba(10,13,17,.34) 70%,rgba(10,13,17,.12));
+    box-shadow:0 -1px 8px rgba(80,140,200,.09);
+    display:flex;justify-content:center;align-items:center;gap:14px;
+  }
+  html[data-theme="fantasy"] .turn-console::before,
+  html[data-theme="fantasy"] .turn-console::after{
+    content:"";position:absolute;top:50%;width:8px;height:8px;margin-top:-4px;
+    transform:rotate(45deg);
+    border:1px solid rgba(203,164,101,.75);
+    background:rgba(203,164,101,.15);
+  }
+  html[data-theme="fantasy"] .turn-console::before{left:12px}
+  html[data-theme="fantasy"] .turn-console::after{right:12px}
+  html[data-theme="fantasy"] .status-line{justify-content:center;gap:10px;font-size:13px}
+  html[data-theme="fantasy"] .turn-dot{display:none}
+  html[data-theme="fantasy"] .status-line strong{
+    font-family:var(--display-font);
+    font:600 16px/1.2 var(--display-font);
+    color:#93c8ef;letter-spacing:.14em;text-indent:.14em;
+    text-transform:none;font-variant:small-caps;
+    text-shadow:0 0 10px rgba(90,170,240,.5),0 1px 2px rgba(0,0,0,.8);
+  }
+  html[data-theme="fantasy"] #statusDetail,html[data-theme="fantasy"] .status-divider{display:none}
+  html[data-theme="fantasy"] .status-chips{margin:0;display:flex;align-items:center}
+  html[data-theme="fantasy"] #modeStatus,html[data-theme="fantasy"] #movementStatus{display:none}
+  html[data-theme="fantasy"] #turnCounter{
+    border:0;padding:0;color:#d6ae6d;
+    font:600 16px/1.2 var(--display-font);
+    letter-spacing:.1em;text-transform:none;font-variant:small-caps;
+    text-shadow:0 1px 2px rgba(0,0,0,.8);
+    display:inline-flex;align-items:center;
+  }
+  html[data-theme="fantasy"] #turnCounter::before{
+    content:"";display:inline-block;width:48px;height:9px;margin:0 12px 0 2px;
+    background:url("../assets/themes/stone-onyx/ornament-dotline.svg") center/contain no-repeat;
+    opacity:.85;
+  }
+  html[data-theme="fantasy"] .winner{font-family:var(--display-font);letter-spacing:.04em}
+
+  /* ------------------------------------------------------ Stone buttons */
+  html[data-theme="fantasy"] .center-actions{
+    width:100%;max-width:744px;margin-top:12px;
+    display:grid;grid-template-columns:repeat(3,1fr);gap:16px;
+  }
+  html[data-theme="fantasy"] .center-actions button{
+    min-width:0;height:64px;border-radius:4px;
+    border:1px solid rgba(206,166,101,.66);
+    background:
+      linear-gradient(165deg,rgba(148,180,214,.09),transparent 34%),
+      linear-gradient(180deg,#2c3441 0%,#1c2330 42%,#0c1017 100%),
+      url("../assets/themes/stone-onyx/black-stone.webp") center/cover;
+    box-shadow:
+      inset 0 0 0 2.5px rgba(6,8,11,.9),
+      inset 0 0 0 3.5px rgba(214,176,112,.36),
+      inset 0 1px 0 3px rgba(255,255,255,.06),
+      inset 0 -16px 22px rgba(0,0,0,.36),
+      0 6px 12px rgba(0,0,0,.46),
+      0 1px 3px rgba(0,0,0,.55);
+    color:#e3cda0;
+    font:600 17px/1 var(--display-font);
+    letter-spacing:.11em;text-transform:none;font-variant:small-caps;
+    text-shadow:0 1px 2px rgba(0,0,0,.85);
+  }
+  html[data-theme="fantasy"] .center-actions button:hover:not(:disabled){
+    filter:none;border-color:#e2bd7c;
+    background:
+      linear-gradient(165deg,rgba(148,180,214,.14),transparent 40%),
+      linear-gradient(180deg,#333c4b 0%,#222a39 42%,#111624 100%),
+      url("../assets/themes/stone-onyx/black-stone.webp") center/cover;
+  }
+  html[data-theme="fantasy"] .center-actions button:active:not(:disabled){transform:translateY(1px)}
+  html[data-theme="fantasy"] .btn-ico{width:19px;height:19px;color:#d9bd8d;filter:drop-shadow(0 1px 1px rgba(0,0,0,.7))}
+
+  /* --------------------------------------------------------- Move ribbon */
+  html[data-theme="fantasy"] .history-panel{
+    width:min(920px,100%);margin:6px auto 0;padding:11px 14px 13px;
+    border:1px solid rgba(196,158,98,.5);border-radius:4px;
+    background:
+      linear-gradient(160deg,rgba(255,255,255,.04),transparent 26%),
+      linear-gradient(rgba(13,16,18,.93),rgba(8,10,12,.97)),
+      url("../assets/themes/stone-onyx/black-stone.webp") center/cover;
+    box-shadow:
+      inset 0 0 0 2px rgba(5,7,8,.85),
+      inset 0 0 0 3px rgba(216,180,114,.16),
+      0 8px 18px rgba(0,0,0,.4);
+  }
+  html[data-theme="fantasy"] .history-heading{justify-content:center;align-items:center;margin:0 0 8px}
+  html[data-theme="fantasy"] .history-heading .eyebrow,
+  html[data-theme="fantasy"] .history-meta{display:none}
+  html[data-theme="fantasy"] .history-heading h2{
+    display:flex;align-items:center;gap:12px;
+    font:600 14px/1 var(--display-font);
+    color:#d9bd85;letter-spacing:.22em;text-indent:.05em;
+    text-transform:none;font-variant:small-caps;
+    text-shadow:0 1px 2px rgba(0,0,0,.8);
+  }
+  html[data-theme="fantasy"] .log-arrow{display:block;position:relative;width:128px;height:9px}
+  html[data-theme="fantasy"] .log-arrow::before{
+    content:"";position:absolute;top:4px;height:1px;left:0;right:6px;
+    background:linear-gradient(90deg,transparent,rgba(203,164,101,.8));
+  }
+  html[data-theme="fantasy"] .log-arrow--r::before{
+    right:0;left:6px;
+    background:linear-gradient(90deg,rgba(203,164,101,.8),transparent);
+  }
+  html[data-theme="fantasy"] .log-arrow::after{
+    content:"";position:absolute;top:1.5px;width:0;height:0;
+    border-top:3.5px solid transparent;border-bottom:3.5px solid transparent;
+  }
+  html[data-theme="fantasy"] .log-arrow--l::after{right:0;border-left:6px solid rgba(214,176,112,.9)}
+  html[data-theme="fantasy"] .log-arrow--r::after{left:0;border-right:6px solid rgba(214,176,112,.9)}
+
+  html[data-theme="fantasy"] .move-history-wrap{display:grid;grid-template-columns:32px minmax(0,1fr) 32px;gap:6px;align-items:center}
+  html[data-theme="fantasy"] .history-nav{
+    width:32px;height:40px;padding:0 0 4px;border:0;border-radius:2px;
+    background:transparent;
+    font:700 30px/1 Georgia,"Times New Roman",serif;color:#e0c088;
+    text-shadow:0 1px 2px rgba(0,0,0,.8);
+  }
+  html[data-theme="fantasy"] .history-nav:hover:not(:disabled){filter:none;color:#f0d9a6;border:0}
+  html[data-theme="fantasy"] .move-history-scroll{overflow-x:auto;overflow-y:hidden;border:0;border-radius:0;background:transparent;scrollbar-width:none}
+  html[data-theme="fantasy"] .move-history-scroll::-webkit-scrollbar{display:none}
+  html[data-theme="fantasy"] .move-history-table{display:block;width:max-content;min-width:100%;border-collapse:separate}
+  html[data-theme="fantasy"] .move-history-table thead{display:none}
+  html[data-theme="fantasy"] .move-history-table tbody{display:flex;gap:10px;white-space:nowrap;min-width:max-content;padding:2px 0}
+  html[data-theme="fantasy"] .move-history-table tr{
+    display:grid;grid-template-columns:auto auto auto;align-items:center;
+    flex:0 0 auto;
+    background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.028));
+    border:1px solid rgba(255,255,255,.05);
+    border-radius:3px;
+    padding:0 6px;
+  }
+  html[data-theme="fantasy"] .move-history-table td{
+    border:0;padding:9px 10px;
+    font:15.5px/1 var(--ui-font);
+    color:#e6dcc6;min-width:0;
+  }
+  html[data-theme="fantasy"] .move-number{width:auto;color:#b7975f;padding-right:3px!important}
+  html[data-theme="fantasy"] .move-cell{font-weight:400}
+  html[data-theme="fantasy"] .move-cell.current{
+    background:linear-gradient(180deg,#dcebf8,#a9c8e4);
+    color:#10263c;font-weight:700;
+    border-radius:3px;padding:6px 10px;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),0 1px 4px rgba(0,0,0,.45),0 0 10px rgba(120,180,235,.25);
+  }
+  html[data-theme="fantasy"] .event-log-details{display:none}
+
+  /* ---------------------------------------------------------- Page finial */
+  html[data-theme="fantasy"] .page-finial{
+    display:flex;align-items:center;justify-content:center;
+    margin:2px 0 8px;height:96px;
+  }
+  html[data-theme="fantasy"] .finial-gem{
+    display:block;width:168px;height:92px;
+    background:url("../assets/themes/stone-onyx/finial.svg") center/contain no-repeat;
+  }
+  html[data-theme="fantasy"] .finial-wing{display:block;position:relative;width:min(330px,24vw);height:26px}
+  html[data-theme="fantasy"] .finial-wing::before,
+  html[data-theme="fantasy"] .finial-wing::after{
+    content:"";position:absolute;left:0;right:0;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(196,158,98,.55));
+  }
+  html[data-theme="fantasy"] .finial-wing--r::before,
+  html[data-theme="fantasy"] .finial-wing--r::after{
+    background:linear-gradient(90deg,rgba(196,158,98,.55),transparent);
+  }
+  html[data-theme="fantasy"] .finial-wing--l::before{top:8px;transform:rotate(2.6deg);transform-origin:right center}
+  html[data-theme="fantasy"] .finial-wing--l::after{bottom:8px;transform:rotate(-2.6deg);transform-origin:right center}
+  html[data-theme="fantasy"] .finial-wing--r::before{top:8px;transform:rotate(-2.6deg);transform-origin:left center}
+  html[data-theme="fantasy"] .finial-wing--r::after{bottom:8px;transform:rotate(2.6deg);transform-origin:left center}
+
+  /* --------------------------------------------------------------- Modals */
+  html[data-theme="fantasy"] .modal-panel{
+    border-radius:4px;border-color:rgba(196,158,98,.54);
+    background:linear-gradient(rgba(20,24,26,.97),rgba(12,15,16,.98)),url("../assets/themes/stone-onyx/black-stone.webp") center/cover;
+    box-shadow:inset 0 0 0 2px rgba(5,7,8,.8),inset 0 0 0 3px rgba(216,180,114,.14),0 22px 70px rgba(0,0,0,.55);
+  }
+  html[data-theme="fantasy"] .modal-head h2{font-family:var(--display-font);font-weight:600;letter-spacing:.05em}
+}
+
+/* ------------------------------------------- Smaller screens: stable fallback */
+@media(max-width:1379px){
+  html[data-theme="fantasy"] .glyph-fallback{display:none}
+  html[data-theme="fantasy"] .piece-art{display:block}
+  html[data-theme="fantasy"] .player-panel[data-side="white"]{
+    background:linear-gradient(rgba(196,184,160,.2),rgba(120,106,84,.24)),url("../assets/themes/stone-onyx/ivory-stone.webp") center/cover;
+    border-color:rgba(100,75,43,.72);
+  }
+  html[data-theme="fantasy"] .player-panel[data-side="black"]{
+    background:linear-gradient(rgba(12,15,16,.3),rgba(1,3,4,.45)),url("../assets/themes/stone-onyx/black-stone.webp") center/cover;
+    border-color:rgba(190,151,91,.54);
+  }
+  html[data-theme="fantasy"] h1,html[data-theme="fantasy"] h2{font-family:var(--display-font)}
+}
+@media(max-width:1120px){
+  html[data-theme="fantasy"]{--side-width:230px;--stage-gap:10px}
+}
+
+@media(max-width:640px){
+  html[data-theme="fantasy"] .app-header__inner{display:flex;justify-content:space-between;align-items:center;width:94vw;min-height:64px}
+  html[data-theme="fantasy"] .brand-block{min-width:0;display:block;padding-top:0}
+  html[data-theme="fantasy"] .brand-block::before,
+  html[data-theme="fantasy"] .brand-block::after,
+  html[data-theme="fantasy"] .brand-title::before,
+  html[data-theme="fantasy"] .page-topline{display:none}
+  html[data-theme="fantasy"] .brand-title{font-size:27px;letter-spacing:.08em}
+}
