@@ -310,6 +310,17 @@
   const rulesBackdrop=document.getElementById('rulesBackdrop');
   const btnCloseRules=document.getElementById('btnCloseRules');
   const themeChoices=[...document.querySelectorAll('[data-theme-choice]')];
+  const welcomeDialog = document.getElementById('welcomeDialog');
+  const skipWelcome = document.getElementById('skipWelcome');
+  const welcomePreference = 'chessII.skipWelcome';
+
+  function shouldShowWelcome() {
+    try {
+      return localStorage.getItem(welcomePreference) !== 'true';
+    } catch {
+      return true;
+    }
+  }
 
   const THEMES=new Set(['fantasy','classic','neon','parchment','deco']);
   function readStoredTheme(){
@@ -1040,7 +1051,24 @@
     settingsHeatmap.checked=heatmapSetup.checked;
     updateAISetup();
     updateSetupSummary();
-    if(location.hash==='#play') startGame(readSetupConfig());
+    const startDirectly = location.hash === '#play';
+    if (shouldShowWelcome() && typeof welcomeDialog.showModal === 'function') {
+      skipWelcome.checked = false;
+      welcomeDialog.addEventListener('close', () => {
+        if (skipWelcome.checked) {
+          try { localStorage.setItem(welcomePreference, 'true'); } catch {}
+        }
+        if (startDirectly) {
+          startGame(readSetupConfig());
+          btnRules.focus();
+        } else {
+          gameModeSetup.focus();
+        }
+      }, { once: true });
+      welcomeDialog.showModal();
+    } else if (startDirectly) {
+      startGame(readSetupConfig());
+    }
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 

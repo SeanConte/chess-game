@@ -4,6 +4,18 @@ On opening Chess II, the welcome dialog introduces the empty board and
 automatic elimination rules. Check **Don’t show this again** to skip it on
 future visits in the same browser.
 
+## Updating GitHub Pages
+
+Extract the ZIP and upload its contents directly into the folder GitHub
+Pages publishes. The ZIP opens with `index.html`, `js/`, `css/`, and
+`assets/` at the same level. In that folder, replace `index.html`,
+`js/game.js`, and `css/app.css` together. The welcome dialog uses those
+three files. Keep the relative paths of the other bundled files when uploading
+the full release.
+
+`index.html` loads `js/game.js` and `css/app.css` with cache keys tied
+to the packaged file contents.
+
 ## AI with bounded thinking time
 
 Open `index.html`, enable **Black AI**, and choose a difficulty:
